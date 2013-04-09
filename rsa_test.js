@@ -210,18 +210,53 @@ function testKeyczarConversion() {
     assert.equal(decoded, message);
 }
 
+function checkOAEPEncrypt(pubkey, message, seed, expected) {
+    message = forge.util.decode64(message);
+    seed = forge.util.decode64(seed);
+    var ciphertext = rsa_es_oaep_encrypt(pubkey, message, '', seed);
+    assert.equal(expected, forge.util.encode64(ciphertext));
+}
+
 function testOAEP() {
     var modulus = _base64ToBn('qLOyhK+OtQs4cDSoYPFGxJGfMYdjzWxVmMiuSBGh4KvEx+CwgtaTpef87Wdc9GaFEncsDLxkp0LGxjD1M8jMcvYq6DPEC/JYQumEu3i9v5fAEH1VvbZi9cTg+rmEXLUUjvc5LdOq/5OuHmtme7PUJHYW1PW6ENTP0ibeiNOfFvs=');
     var exponent = _base64ToBn('AQAB');
     var pubkey = forge.pki.setRsaPublicKey(modulus, exponent);
 
-    // RSA's test vector 1.1
-    var message = forge.util.decode64('ZigZThIHPbA7qUzanvlTI5fVDbp5uYcASv7+NA==');
-    var seed = forge.util.decode64('GLd26iEGnWl3ajPpa61I4d2gpe8=');
-    var expected = 'NU/me0oSbV01/jbHd3kaP3uhPe9ITi05CK/3IvrUaPshaW3pXQvpEcLTF0+K/MIBA197bY5pQC3lRRYYwhpTX6nXv8W43Z/CQ/jPkn2zEyLW6IHqqRqZYXDmV6BaJmQm2YyIAD+Ed8EicJSg2foejEAkMJzh7My1IQA11HrHLoo=';
+    // RSAES-OAEP Encryption Example 1.1
+    var message = 'ZigZThIHPbA7qUzanvlTI5fVDbp5uYcASv7+NA==';
+    var seed = 'GLd26iEGnWl3ajPpa61I4d2gpe8=';
+    var encrypted = 'NU/me0oSbV01/jbHd3kaP3uhPe9ITi05CK/3IvrUaPshaW3pXQvpEcLTF0+K/MIBA197bY5pQC3lRRYYwhpTX6nXv8W43Z/CQ/jPkn2zEyLW6IHqqRqZYXDmV6BaJmQm2YyIAD+Ed8EicJSg2foejEAkMJzh7My1IQA11HrHLoo=';
+    checkOAEPEncrypt(pubkey, message, seed, encrypted);
 
-    var ciphertext = rsa_es_oaep_encrypt(pubkey, message, '', seed);
-    assert.equal(expected, forge.util.encode64(ciphertext));
+    // RSAES-OAEP Encryption Example 1.2
+    message = 'dQxAR/VH6OQUEYVlIymKybriRe+vE5f75W+d1Q==';
+    seed = 'DMdCzkqbfzL5UbyyUe/ZJf5P418=';
+    encrypted = 'ZA2xrMWOBWj+VAfl+bcB3/jDyR5xbFNvx/zsbLW3HBFlmI1KJ54Vd9cw/Hopky4/AMgVFSNtjY4xAXp6Cd9DUtkEzet5qlg63MMeppikwFKD2rqQib5UkfZ8Gk7kjcdLu+ZkOu+EZnm0yzlaNS1e0RWRLfaW/+BwKTKUbXFJK0Q=';
+    checkOAEPEncrypt(pubkey, message, seed, encrypted);
+
+    // RSAES-OAEP Encryption Example 1.3
+    message = '2Urggy5kRc5CMxywbVMagrHbS6rTD3RtyRbfJNTjwkUf/1mmQj6w4dAtT+ZGz2md/YGMbpewUQ==';
+    seed = 'JRTfRpV1WmeyiOr0kFw27sZv0v0=';
+    encrypted = 'Qjc27QNfYCavJ2w1wLN0GzZeX3bKCRtOjCni8L7+5gNZWqgyLWAtLmJeleuBsvHJck6CLsp224YYzwnFNDUDpDYINbWQO8Y344efsF4O8yaF1a7FBnzXzJb+SyZwturDBmsfz1aGtoWJqvt9YpsC2PhiXKODNiTUgA+wgbHPlOs=';
+    checkOAEPEncrypt(pubkey, message, seed, encrypted);
+
+    // RSAES-OAEP Encryption Example 1.4
+    message = 'UuZQ2Y5/KgSLT4aFIVO5fgHdMW80ahn2eoU=';
+    seed = 'xENaPhoYpotoIENikKN877hds/s=';
+    encrypted = 'RerUylUeZiyYAPGsqCg7BSXmq64wvktKunYvpA/T044iq+/Gl5T267vAXduxEhYkfS9BL9D7qHxuOs2IiBNkb9DkjnhSBPnD9z1tgjlWJyLd3Ydx/sSLg6Me5vWSxM/UvIgXTzsToRKq47n3uA4PxvclW6iA3H2AIeIq1qhfB1U=';
+    checkOAEPEncrypt(pubkey, message, seed, encrypted);
+
+    // RSAES-OAEP Encryption Example 1.5
+    message = 'jaif2eX5dKKf7/tGK0kYD2z56AI=';
+    seed = 'sxjELfO+D4P+qCP1p7R+1eQlo7U=';
+    encrypted = 'NvbjTZSo002qy6M6ITnQCthak0WoYFHnMHFiAFa5IOIZAFhVohOg8jiXzc1zG0UlfHd/6QggK+/dC1g4axJE6gz1OaBdXRAynaROEwMP12Dc1kTP7yCU0ZENP0M+HHxt0YvB8t9/ZD1mL7ndN+rZBZGQ9PpmyjnoacTrRJy9xDk=';
+    checkOAEPEncrypt(pubkey, message, seed, encrypted);
+
+    // RSAES-OAEP Encryption Example 1.6
+    message = 'JlIQUIRCcQ==';
+    seed = '5OwJgsIzbzpnf2o1YXTrDOiHq8I=';
+    encrypted = 'Qs7iYXsezqTbP0gpOG+9Ydr78DjhgNg3yWNm3yTAl7SrD6xr31kNghyfEGQuaBrQW414s3jA9Gzi+tY/dOCtPfBrB11+tfVjb41AO5BZynYbXGK7UqpFAC6nC6rOCN7SQ7nYy9YqaK3iZYMrVlZOQ6b6Qu0ZmgmXaXQt8VOeglU=';
+    checkOAEPEncrypt(pubkey, message, seed, encrypted);
 }
 
 var tests = [testKeyczarConversion, testOAEP];
