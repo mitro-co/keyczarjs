@@ -1,292 +1,41 @@
 var assert = require('assert');
+
 var forge = require('forge');
 
-assert.equal('hello', 'hello');
-
-var pubkeyPem = '-----BEGIN PUBLIC KEY-----' +
-'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDCjvkkLWNTeYXqEsqGiVCW/pDt' +
-'3/qAodNMHcU9gOU2rxeWwiRuOhhLqmMxXHLi0oP5Xmg0m7zdOiLMEyzzyRzdp21a' +
-'qp3k5qtuSDkZcf1prsp1jpYm6z9EGpaSHb64BCuUsQGmUPKutd5RERKHGZXtiRuv' +
-'vIyue7ETq6VjXrOUHQIDAQAB' +
-'-----END PUBLIC KEY-----';
-
-var privateKeyPem = '-----BEGIN RSA PRIVATE KEY-----' +
-'MIICWwIBAAKBgQDCjvkkLWNTeYXqEsqGiVCW/pDt3/qAodNMHcU9gOU2rxeWwiRu' +
-'OhhLqmMxXHLi0oP5Xmg0m7zdOiLMEyzzyRzdp21aqp3k5qtuSDkZcf1prsp1jpYm' +
-'6z9EGpaSHb64BCuUsQGmUPKutd5RERKHGZXtiRuvvIyue7ETq6VjXrOUHQIDAQAB' +
-'AoGAOKeBjTNaVRhyEnNeXkbmHNIMSfiK7aIx8VxJ71r1ZDMgX1oxWZe5M29uaxVM' +
-'rxg2Lgt7tLYVDSa8s0hyMptBuBdy3TJUWruDx85uwCrWnMerCt/iKVBS22fv5vm0' +
-'LEq/4gjgIVTZwgqbVxGsBlKcY2VzxAfYqYzU8EOZBeNhZdECQQDy+PJAPcUN2xOs' +
-'6qy66S91x6y3vMjs900OeX4+bgT4VSVKmLpqRTPizzcL07tT4+Y+pAAOX6VstZvZ' +
-'6iFDL5rPAkEAzP1+gaRczboKoJWKJt0uEMUmztcY9NXJFDmjVLqzKwKjcAoGgIal' +
-'h+uBFT9VJ16QajC7KxTRLlarzmMvspItUwJAeUMNhEpPwm6ID1DADDi82wdgiALM' +
-'NJfn+UVhYD8Ac//qsKQwxUDseFH6owh1AZVIIBMxg/rwUKUCt2tGVoW3uQJAIt6M' +
-'Aml/D8+xtxc45NuC1n9y1oRoTl1/Ut1rFyKbD5nnS0upR3uf9LruvjqDtaq0Thvz' +
-'+qQT4RoFJ5pfprSO2QJAdMkfNWRqECfAhZyQuUrapeWU3eQ0wjvktIynCIwiBDd2' +
-'MfjmVXzBJhMk6dtINt+vBEITVQEOdtyTgDt0y3n2Lw==' +
-'-----END RSA PRIVATE KEY-----';
-
-
-/** Copied from forge.pki.js because it is not public */
-var _bnToBytes = function(b) {
-  // prepend 0x00 if first byte >= 0x80
-  var hex = b.toString(16);
-  if(hex[0] >= '8') {
-    hex = '00' + hex;
-  }
-  return forge.util.hexToBytes(hex);
-};
-
-function _bnToBase64(b) {
-    return forge.util.encode64(_bnToBytes(b));
-}
-
-function _publicKeyToKeyczarJson(key) {
-    return {
-        modulus: _bnToBase64(key.n),
-        publicExponent: _bnToBase64(key.e),
-        size: key.n.bitLength()
-    };
-}
-
-function publicKeyToKeyczar(key) {
-    return JSON.stringify(_publicKeyToKeyczarJson(key));
-}
-
-function _bytesToBigInteger(bytes) {
-    var buffer = forge.util.createBuffer(bytes);
-    var hex = buffer.toHex();
-    return new BigInteger(hex, 16); 
-}
-
-function _base64ToBn(s) {
-    var decoded = forge.util.decode64(s);
-    return _bytesToBigInteger(decoded);
-}
-
-function publicKeyFromKeyczar(serialized) {
-    var obj = JSON.parse(serialized);
-    var modulus = _base64ToBn(obj.modulus);
-    var exponent = _base64ToBn(obj.publicExponent);
-    return forge.pki.setRsaPublicKey(modulus, exponent);
-}
-
-function privateKeyToKeyczar(key) {
-    var obj = {
-        publicKey: _publicKeyToKeyczarJson(key),
-
-        privateExponent: _bnToBase64(key.d),
-        primeP: _bnToBase64(key.p),
-        primeQ: _bnToBase64(key.q),
-        primeExponentP: _bnToBase64(key.dP),
-        primeExponentQ: _bnToBase64(key.dQ),
-        crtCoefficient: _bnToBase64(key.qInv),
-
-        size: key.q.bitLength() + key.p.bitLength()
-    };
-
-    if (obj.size != obj.publicKey.size) {
-        throw new Error("Incorrect calculation of private key size? " + obj.size + " != " + obj.publicKey.size);
-    }
-
-    return JSON.stringify(obj);
-}
-
-function privateKeyFromKeyczar(serialized) {
-    obj = JSON.parse(serialized);
-
-    // public key parts
-    var n = _base64ToBn(obj.publicKey.modulus);
-    var e = _base64ToBn(obj.publicKey.publicExponent);
-
-    // private key parts
-    var d = _base64ToBn(obj.privateExponent);
-    var p = _base64ToBn(obj.primeP);
-    var q = _base64ToBn(obj.primeQ);
-    var dP = _base64ToBn(obj.primeExponentP);
-    var dQ = _base64ToBn(obj.primeExponentQ);
-    var qInv = _base64ToBn(obj.crtCoefficient);
-
-    return forge.pki.setRsaPrivateKey(n, e, d, p, q, dP, dQ, qInv);
-}
-
-// RSA OAEP implementation based on the following, MIT and BSD code
-// https://github.com/davedoesdev/jsjws/commit/4a2d8958c82100bf0fecfda9933bb399a83b8b14
-// http://webrsa.cvs.sourceforge.net/viewvc/webrsa/Client/RSAES-OAEP.js?content-type=text%2Fplai
-// See http://www.rsa.com/rsalabs/node.asp?id=2125
-
-// RSAES-OAEP-ENCRYPT message (M), with optional label (L)
-function rsa_es_oaep_encrypt(key, message, label, seed) {
-    // hash function hard-coded to SHA-1
-    var md = forge.md.sha1.create();
-
-    // compute length in bytes and check output
-    var keyLength = Math.ceil(key.n.bitLength() / 8);
-    var maxLength = keyLength - 2 * md.digestLength - 2;
-    if (message.length > maxLength) {
-        throw new Error("input message too long (max: " + maxLength +
-                " message: " + message.length + ")");
-    }
-
-    if (!label) label = '';
-    md.update(label);
-    var lHash = md.digest();
-
-    var PS = '';
-    var PS_length = maxLength - message.length;
-    for (var i = 0; i < PS_length; i++) {
-        PS += '\x00';
-    }
-
-    var DB = lHash.getBytes() + PS + '\x01' + message;
-
-    if (!seed) {
-        seed = forge.random.getBytes(md.digestLength);
-    } else if (seed.length != md.digestLength) {
-        throw new Error("Invalid seed");
-    }
-
-    var dbMask = rsa_mgf1(seed, keyLength - md.digestLength - 1, md);
-    var maskedDB = xorString(DB, dbMask);
-
-    var seedMask = rsa_mgf1(maskedDB, md.digestLength, md);
-    var maskedSeed = xorString(seed, seedMask);
-
-    var EM = '\x00' + maskedSeed + maskedDB;
-
-    // true = public key; do not pad
-    var C = forge.pki.rsa.encrypt(EM, key, true);
-    return C;
-}
-
-// RSAES-OAEP-DECRYPT ciphertext (C), with optional label (L)
-function rsa_es_oaep_decrypt(key, ciphertext, label) {
-    // compute length in bytes and check output
-    var keyLength = Math.ceil(key.n.bitLength() / 8);
-
-    if (ciphertext.length != keyLength) {
-        throw new Error('Decryption error: invalid ciphertext length');
-    }
-
-    // hash function hard-coded to SHA-1
-    var md = forge.md.sha1.create();
-
-    if (keyLength < 2 * md.digestLength + 2) {
-        throw new Error('Decryption error: key too short for the hash function');
-    }
-
-    // false = private key operation; false = no padding
-    var EM = forge.pki.rsa.decrypt(ciphertext, key, false, false);
-
-    if (!label) label = '';
-    md.update(label);
-    var lHash = md.digest();
-
-    // Split the message into its parts
-    var y = EM.charCodeAt(0);
-    var maskedSeed = EM.substring(1, md.digestLength + 1);
-    var maskedDB = EM.substring(1 + md.digestLength);
-
-    var seedMask = rsa_mgf1(maskedDB, md.digestLength, md);
-    var seed = xorString(maskedSeed, seedMask);
-
-    var dbMask = rsa_mgf1(seed, keyLength - md.digestLength - 1, md);
-    var db = xorString(maskedDB, dbMask);
-
-    var lHashPrime = db.substring(0, md.digestLength);
-
-    // Constant time find the 0x1 byte separating the padding (zeros) from the message
-    // TODO: It must be possible to do this in a better/smarter way?
-    var in_ps = 1;
-    var index = md.digestLength;
-    var error = 0;
-    for (var i = md.digestLength; i < db.length; i++) {
-        var code = db.charCodeAt(i);
-
-        var is_1 = (code & 0x1) ^ 0x1;
-
-        // non-zero if not 0 or 1 in the ps section
-        var error_mask = in_ps ? 0xfffe : 0x0000;
-        error |= (code & error_mask);
-
-        // latch in_ps to zero after we find is_1
-        in_ps = in_ps & is_1;
-        index += in_ps;
-    }
-
-    if (error || db.charCodeAt(index) != 0x1) {
-        throw new Error("Decryption error: invalid padding");
-    }
-    return db.substring(index + 1);
-}
-
-function xorString(string1, string2) {
-    if (string1.length != string2.length) {
-        throw new Error("mismatched string lengths: "+  string1.length + ", " + string2.length);
-    }
-
-    var out = '';
-    for (i = 0; i < string1.length; i++) {
-        out += String.fromCharCode(string1.charCodeAt(i) ^ string2.charCodeAt(i));
-    }
-    return out;
-}
-
-function rsa_mgf1(seed, maskLength, hash) {
-   var t = '';
-   var count = Math.ceil(maskLength / hash.digestLength);
-   for (var i = 0; i < count; i++) {
-      c = String.fromCharCode((i >> 24) & 0xFF, (i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF);
-      hash.start();
-      hash.update(seed + c);
-      t += hash.digest().getBytes();
-   }
-
-   return t.substring(0, maskLength);
-}
-
-function testKeyczarConversion() {
-    // load a known public key; format it as a keyczar key
-    var pubkey = forge.pki.publicKeyFromPem(pubkeyPem);
-    var keyczarSerialized = publicKeyToKeyczar(pubkey);
-    var roundtripped = publicKeyFromKeyczar(keyczarSerialized);
-
-    // load the known private key; format it as a keyczar key
-    var privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
-
-    // Encrypt message with the key 
-    var message = 'hello this is a message';
-    var ciphertext = pubkey.encrypt(message);
-    var decoded = privateKey.decrypt(ciphertext);
-    assert.equal(decoded, message);
-
-    // Encrypt it with the roundtripped public key
-    ciphertext = roundtripped.encrypt(message);
-    decoded = privateKey.decrypt(ciphertext);
-    assert.equal(decoded, message);
-
-    // Round trip the private key
-    keyczarSerialized = privateKeyToKeyczar(privateKey);
-    roundtripped = privateKeyFromKeyczar(keyczarSerialized);
-
-    // decrypt the message with the roundtripped key
-    decoded = roundtripped.decrypt(ciphertext);
-    assert.equal(decoded, message);
-}
+var rsa_oaep = require('./rsa_oaep');
+var keyczar_util = require('./keyczar_util');
 
 function checkOAEPEncrypt(pubkey, privateKey, message, seed, expected) {
     message = forge.util.decode64(message);
     seed = forge.util.decode64(seed);
-    var ciphertext = rsa_es_oaep_encrypt(pubkey, message, '', seed);
+    var ciphertext = rsa_oaep.rsa_oaep_encrypt(pubkey, message, '', seed);
     assert.equal(expected, forge.util.encode64(ciphertext));
 
-    var decrypted = rsa_es_oaep_decrypt(privateKey, ciphertext);
+    var decrypted = rsa_oaep.rsa_oaep_decrypt(privateKey, ciphertext);
     assert.equal(message, decrypted);
 
     // Test with default label and generating a seed
-    ciphertext = rsa_es_oaep_encrypt(pubkey, message);
-    decrypted = rsa_es_oaep_decrypt(privateKey, ciphertext);
+    ciphertext = rsa_oaep.rsa_oaep_encrypt(pubkey, message);
+    decrypted = rsa_oaep.rsa_oaep_decrypt(privateKey, ciphertext);
     assert.equal(message, decrypted);
+}
+
+function decodeBase64PublicKey(modulus, exponent) {
+    modulus = keyczar_util._base64ToBn(modulus);
+    exponent = keyczar_util._base64ToBn(exponent);
+    return forge.pki.setRsaPublicKey(modulus, exponent);
+}
+
+function decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv) {
+    modulus = keyczar_util._base64ToBn(modulus);
+    exponent = keyczar_util._base64ToBn(exponent);
+    d = keyczar_util._base64ToBn(d);
+    p = keyczar_util._base64ToBn(p);
+    q = keyczar_util._base64ToBn(q);
+    dP = keyczar_util._base64ToBn(dP);
+    dQ = keyczar_util._base64ToBn(dQ);
+    qInv = keyczar_util._base64ToBn(qInv);
+    return forge.pki.setRsaPrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 }
 
 function testOAEP() {
@@ -302,10 +51,8 @@ function testOAEP() {
     dP = 'DhK/FxjpzvVZm6HDiC/oBGqQh07vzo8szCDk8nQfsKM6OEiuyckwX77L0tdoGZZ9RnGsxkMeQDeWjbN4eOaVwQ==';
     dQ = 'lSl7D5Wi+mfQBwfWCd/U/AXIna/C721upVvsdx6jM3NNklHnkILs2oZu/vE8RZ4aYxOGt+NUyJn18RLKhdcVgw==';
     qInv = 'T0VsUCSTvcDtKrdWo6btTWc1Kml9QhbpMhKxJ6Y9VBHOb6mNXb79cyY+NygUJ0OBgWbtfdY2h90qjKHS9PvY4Q==';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 1.1
     message = 'ZigZThIHPbA7qUzanvlTI5fVDbp5uYcASv7+NA==';
@@ -353,10 +100,8 @@ function testOAEP() {
     dP = 'Q271CN5zZRnC2kxYDZjILLdFKj+1763Ducd4mhvGWE95Wt270yQ5x0aGVS7LbCwwek069/U57sFXJIx7MfGiVQ==';
     dQ = 'ASsVqJ89+ys5Bz5z8CvdDBp7N53UNfBc3eLv+eRilIt87GLukFDV4IFuB4WoVrSRCNy3XzaDh00cpjKaGQEwZv8=';
     qInv = 'AnDbF9WRSwGNdhGLJDiac1Dsg2sAY6IXISNv2O222JtR5+64e2EbcTLLfqc1bCMVHB53UVB8eG2e4XlBcKjI6A==';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 2.1
     message = 'j/AMqmBccCgwY02abD1CxlK1jPHZL+xXC+7n';
@@ -404,10 +149,8 @@ function testOAEP() {
     dP = 'BsCiSdIKby7nXIi0lNU/aq6ZqkJ8iMKLFjp2lEXl85DPQMJ0/W6mMppc58fOA6IVg5buKnhFeG4J4ohalyjk5Q==';
     dQ = '0dJ8Kf7dkthsNI7dDMv6wU90bgUc4dGBHfNdYfLuHJfUvygEgC9kJxh7qOkKivRCQ7QHmwNEXmAuKfpRk+ZP6Q==';
     qInv = 'jLL3Vr2JQbHTt3DlrTHuNzsorNpp/5tvQP5Xi58a+4WDb5Yn03rP9zwneeY0uyYBHCyPfzNhriqepl7WieNjmg==';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 3.1
     message = 'CHggtWno+o0=';
@@ -455,10 +198,8 @@ function testOAEP() {
     dP = 'OfoCi4JuiMESG3UKiyQvqaNcW2a9/R+mN9PMSKhKT0V6GU53J+Sfe8xuWlpBJlf8RwxzIuvDdBbvRYwweowJAQ==';
     dQ = 'AV2ZqEGVlDl5+p4b4sPBtp9DL0b9A+R9W++7v9ax0Tcdg++zMKPgIJQrL+0RXl0CviT9kskBnRzs1t1M8eVMyJk=';
     qInv = 'AfC3AVFws/XkIiO6MDAcQabYfLtw4wy308Z9JUc9sfbL8D4/kSbj6XloJ5qGWywrQmUkz8UqaD0x7TDrmEvkEro=';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 4.1
     message = 'SoZglTTuQ0psvKP36WLnbUVeMmTBn2Bfbl/2E3xlxW1/s0TNUryTN089FmyfDG+cUGutGTMJctI=';
@@ -506,10 +247,8 @@ function testOAEP() {
     dP = 'AehLEZ0lFh+mewAlalvZtkXSsjLssFsBUYACmohiKtw/CbOurN5hYat83iLCrSbneX31TgcsvTsmc4ALPkM429U=';
     dQ = '65CqGkATW0zqBxl87ciBm+Hny/8lR2YhFvRlpKn0h6sS87pP7xOCImWmUpfZi3ve2TcuP/6Bo4s+lgD+0FV1Tw==';
     qInv = 'AS9/gTj5QEBi64WkKSRSCzj1u4hqAZb0i7jc6mD9kswCfxjngVijSlxdX4YKD2wEBxp9ATEsBlBi8etIt50cg8s=';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 5.1
     message = 'r3GpAeOmHTEy8Pwf20dPnqZXklf/wk0WQXAUWz296A==';
@@ -557,10 +296,8 @@ function testOAEP() {
     dP = 'A5Ycj3YKor1RVMeq/XciWzus0BOa57WUjqMxH8zYb7lcda+nZyhLmy3lWVcvFdjQRMfrg6G+X63yzDd8DYR1KUs=';
     dQ = 'AiGX4GZ0IZaqvAP6L+605wsVy3h9YXrNMbt1x7wjStcG98SNIYLR8P+cIo3PQZZ7bAum0sCtEQobhXgx7CReLLE=';
     qInv = 'BAHEwMU9RdvbXp2W0P7PQnXfCXS8Sgc2tKdMMmkFPvtoas4kBuIsngWN20rlQGJ64v2wgmHo5+S8vJlNqvowXEU=';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 6.1
     message = 'QEbKi6ozR8on9J4NgfnMHXG+m6UX1A==';
@@ -608,10 +345,8 @@ function testOAEP() {
     dP = 'A7x+p/CqsUOrxs6LlxGGNqMBcuTP4CyPoN2jt7qvkPgJKYKYVSX0iL38tL1ybiJjmsZKMJKrf/y/HVM0z6ULW/E=';
     dQ = 'AmKmqinCo8Z9xTRsBjga/Zh6o8yTz7/s9U/dn514fX9ZpSPTmJedoTei9jgf6UgB98lNohUY3DTLQIcMRpeZStk=';
     qInv = 'ZJ1MF7buFyHnctA4mlWcPTzflVDUV8RrA3t0ZBsdUhZq+KITyDliBs37pEIvGNb2Hby10hTJcb9IKuuXanNwwg==';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 7.1
     message = 'R6rpCQ==';
@@ -659,10 +394,8 @@ function testOAEP() {
     dP = 'B8cUEK8QOWLbNnQE43roULqk6cKd2SFFgVKUpnx9HG3tJjqgMKm2M65QMD4UA10a8BQSPrpoeCAwjY68hbaVfX0=';
     dQ = 'rix1OAwCwBatBYkbMwHeiB8orhFxGCtrLIO+p8UV7KnKKYx7HKtYF6WXBo/IUGDeTaigFjeKrkPH+We8w3kEuQ==';
     qInv = 'BZjRBZ462k9jIHUsCdgF/30fGuDQF67u6c76DX3X/3deRLV4Mi9kBdYhHaGVGWZqqH/cTNjIj2tuPWfpYdy7o9A=';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 8.1
     message = 'BQt1Xl5ogPe56daSp0w3quRJsxv+pt7/g3R6iX9sLIJbsa2/hQo8lplLXeWzPLx9SheROnln';
@@ -710,10 +443,8 @@ function testOAEP() {
     dP = '2xaAL3mi8NRfNY1p/TPkS4H66ChiLpOlQlPpl9AbB0N1naDoErSqTmyL6rIyjVQxlVpBimf/JqjFyAel2jVOBe8xzIz3WPRjcylQsD4mVyb7lOOdalcqJiRKsI23V1Kt';
     dQ = 'oKMXz+ffFCP4em3uhFH04rSmflSX8ptPHk6DC5+t2UARZwJvVZblo5yXgX4PXxbifhnsmQLgHX6m+5qjx2Cv7h44G2neasnAdYWgatnEugC/dcitL6iYpHnoCuKU/tKh';
     qInv = 'CyHzNcNTNC60TDqiREV4DC1lW5QBdMrjjHyKTmSTwLqf0wN0gmewg7mnpsth5C2zYrjJiW23Bk4CrVrmFYfaFbRknJBZSQn+s328tlS+tyaOyAHlqLSqORG+vYhULwW+';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 9.1
     message = '9zX9VbqSWSw7Urj5xPaaqhy++P6IrdCVWVQSRn+c9OwLiWxZ7aFiEOdUnIq7EM28IaEuyba1uP0vEDmetg==';
@@ -761,10 +492,8 @@ function testOAEP() {
     dP = 'xzVkVx0A+xXQij3plXpQkV1xJulELaz0K8guhi5Wc/9qAI7U0uN0YX34nxehYLQ7f9qctra3QhhgmBX31FyiY8FZqjLSctEn+vS8jKLXc3jorrGbCtfaPLPeCucxSYD2K21LCoddHfA8G645zNgz72zX4tlSi/CE0flp55Tp9sE=';
     dQ = 'Jlizf235wQML4dtoEX+p2H456itpO35tOi9wlHQT7sYULhj7jfy2rFRdfIagrUj4RXFw8O+ya8SBJsU+/R0WkgGY3CoRB9woLbaoDNMGI2C6P6E/cOQxL/GmzWuPxM2cXD2xfG1qVyEvc64p9hkye61ZsVOFhYW6Tii2CmKkXkk=';
     qInv = 'bzhSazklCFU07z5BWoNu3ouGFYosfL/sywvYNDBP7Gg7qNT0ecQz1DQW5jJpYjzqEAd22Fr/QB0//2EO5lQRzjsTY9Y6lwnu3kJkfOpWFJPVRXCoecGGgs2XcQuWIF7DERfXO182Ij+t1ui6kN18DuYdROFjJR4gx/ZuswURfLg=';
-    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));
-    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),
-        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),
-        _base64ToBn(dQ), _base64ToBn(qInv));
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 
     //  RSAES-OAEP Encryption Example 10.1
     message = 'i7pr+CpsD4bV8XVul5VocLCJU7BrTrIFvBaU7g==';
@@ -801,14 +530,7 @@ function testOAEP() {
     seed = 'n0fd9C6X7qhWqb28cU6zrCL26zI=';
     encrypted = 'LSB6c0Mqj7TAMFGz9zsophdkCY36NMR6IJlfgRWqaBZnm1V+gtvuWEkIxuaXgtfes029Za8GPVf8p2pf0GlJL9YGjZmE0gk1BWWmLlx38jA4wSyxDGY0cJtUfEb2tKcJvYXKEi10Rl75d2LCl2Pgbbx6nnOMeL/KAQLcXnnWW5c/KCQMqrLhYaeLV9JiRX7YGV1T48eunaAhiDxtt8JK/dIyLqyXKtPDVMX87x4UbDoCkPtnrfAHBm4AQo0s7BjOWPkyhpje/vSy617HaRj94cGYy7OLevxnYmqa7+xDIr/ZDSVjSByaIh94yCcsgtG2KrkU4cafavbvMMpSYNtKRg==';
     checkOAEPEncrypt(pubkey, privateKey, message, seed, encrypted);
-
-
 }
 
-var tests = [testKeyczarConversion, testOAEP];
-
-for (var i = 0; i < tests.length; i++) {
-    tests[i]();
-    console.log('.');
-}
+testOAEP();
 console.log('success');

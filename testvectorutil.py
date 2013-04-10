@@ -48,10 +48,8 @@ def read_vectors(path):
             if line.startswith('# Encryption'):
                 print '    checkOAEPEncrypt(pubkey, privateKey, message, seed, encrypted);\n'
             elif line.startswith('# CRT coefficient qInv'):
-                print '    pubkey = forge.pki.setRsaPublicKey(_base64ToBn(modulus), _base64ToBn(exponent));'
-                print '    privateKey = forge.pki.setRsaPrivateKey(_base64ToBn(modulus), _base64ToBn(exponent),'
-                print '        _base64ToBn(d), _base64ToBn(p), _base64ToBn(q), _base64ToBn(dP),'
-                print '        _base64ToBn(dQ), _base64ToBn(qInv));\n'
+                print '    pubkey = decodeBase64PublicKey(modulus, exponent);'
+                print '    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);\n'
 
 
 def testVectorToBytes(vectorstring):
