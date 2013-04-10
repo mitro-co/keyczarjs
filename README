@@ -1,0 +1,5 @@
+Keyczar JS
+
+A partial Javascript implementation of Google Keyczar: http://www.keyczar.org/
+
+Implemented using primitives from Forge: https://github.com/digitalbazaar/forge/
