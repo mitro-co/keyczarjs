@@ -11,7 +11,41 @@ var _bnToBytes = function(b) {
 };
 
 function _bnToBase64(b) {
-    return forge.util.encode64(_bnToBytes(b));
+    return encodeBase64Url(_bnToBytes(b));
+}
+
+// Hack to support URL-safe base64 (base64url) from:
+// http://tools.ietf.org/html/rfc4648
+// TODO: Directly encode/decode this alphabet instead of search and replacing?
+// TODO: Patch Forge to use window.btoa/atob if available?
+function decodeBase64Url(message) {
+    message = message.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Add missing padding (=): 3 bytes of padding is an error, but if
+    // length % 4 == 1, add 3 bytes of padding; the error is caught later
+    var padding = '!!==';
+    var remainder_bytes = message.length % 4;
+    if (remainder_bytes > 0) {
+        if (remainder_bytes == 1) {
+            throw new Error("Invalid base64: incorrect input length");
+        }
+        message += padding.substring(remainder_bytes);
+    }
+
+    return forge.util.decode64(message);
+}
+
+function encodeBase64Url(message) {
+    message = forge.util.encode64(message);
+
+    // remove padding
+    var endIndex = message.length-1;
+    while (message.charAt(endIndex) == '=') {
+        endIndex -= 1;
+    }
+    message = message.substring(0, endIndex+1);
+
+    return message.replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 function _publicKeyToKeyczarJson(key) {
@@ -33,7 +67,7 @@ function _bytesToBigInteger(bytes) {
 }
 
 function _base64ToBn(s) {
-    var decoded = forge.util.decode64(s);
+    var decoded = decodeBase64Url(s);
     return _bytesToBigInteger(decoded);
 }
 
@@ -84,6 +118,8 @@ function privateKeyFromKeyczar(serialized) {
 }
 
 module.exports._base64ToBn = _base64ToBn;
+module.exports.decodeBase64Url = decodeBase64Url;
+module.exports.encodeBase64Url = encodeBase64Url;
 module.exports.publicKeyToKeyczar = publicKeyToKeyczar;
 module.exports.publicKeyFromKeyczar = publicKeyFromKeyczar;
 module.exports.privateKeyToKeyczar = privateKeyToKeyczar;

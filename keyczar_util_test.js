@@ -55,5 +55,24 @@ function testKeyczarConversion() {
     assert.equal(decoded, message);
 }
 
+function testBase64Url() {
+    binary = '\x8co\xbf\xfd';
+    keyczar_out = keyczar_util.encodeBase64Url(binary);
+    assert.equal('jG-__Q', keyczar_out);
+    keyczar_out = keyczar_util.decodeBase64Url(keyczar_out);
+    assert.equal(binary, keyczar_out);
+
+    assert.equal('a', keyczar_util.decodeBase64Url('YQ'));
+    assert.equal('aa', keyczar_util.decodeBase64Url('YWE'));
+    assert.equal('aaa', keyczar_util.decodeBase64Url('YWFh'));
+    assert.equal('aaaa', keyczar_util.decodeBase64Url('YWFhYQ'));
+
+    // invalid data (not enough bytes)
+    assert.throws(function() {
+        keyczar_util.decodeBase64Url('Y');
+    });
+}
+
+testBase64Url();
 testKeyczarConversion();
 console.log('success');
