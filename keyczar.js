@@ -4,14 +4,16 @@ var keyczar_util = require('./keyczar_util');
 var rsa_oaep = require('./rsa_oaep');
 
 var TYPE_RSA_PRIVATE = 'RSA_PRIV';
+var TYPE_RSA_PUBLIC = 'RSA_PUB';
 var PURPOSE_DECRYPT_ENCRYPT = 'DECRYPT_AND_ENCRYPT';
+var PURPOSE_ENCRYPT = 'ENCRYPT';
 var STATUS_PRIMARY = 'PRIMARY';
 
 var VERSION_BYTE = '\x00';
 var KEYHASH_LENGTH = 4;
 
 // Unpacks Keyczar's output format
-function _unpackEncoded(encoded) {
+function _unpackOutput(encoded) {
     messageBytes = keyczar_util.decodeBase64Url(encoded);
     if (messageBytes.charAt(0) != VERSION_BYTE) {
         throw new Error('Unsupported version byte: ' + messageBytes.charCodeAt(0));
@@ -20,6 +22,14 @@ function _unpackEncoded(encoded) {
     keyhash = messageBytes.substr(1, KEYHASH_LENGTH);
     message = messageBytes.substr(1+KEYHASH_LENGTH);
     return {keyhash: keyhash, message: message};
+}
+
+function _packOutput(keyhash, message) {
+    if (keyhash.length != KEYHASH_LENGTH) {
+        throw new Error('Invalid keyhash length: ' + keyhash.length);
+    }
+
+    return VERSION_BYTE + keyhash + message;
 }
 
 function _stripLeadingZeros(bytes) {
@@ -65,7 +75,7 @@ function fromJson(serialized) {
     var data = JSON.parse(serialized);
 
     function rsa_decrypt(message) {
-        message = _unpackEncoded(message);
+        message = _unpackOutput(message);
         if (message.keyhash != keyczar.primaryHash) {
             primaryHex = forge.util.bytesToHex(keyczar.primaryHash);
             actualHex = forge.util.bytesToHex(message.keyhash);
@@ -76,8 +86,9 @@ function fromJson(serialized) {
     }
 
     function rsa_encrypt(message) {
-        // var ciphertext = rsa_oeap.rsa_oaep_decrypt(keyczar.primary, message);
-        // return _pack_output();
+        var ciphertext = rsa_oaep.rsa_oaep_encrypt(keyczar.primary, message);
+        outbytes = _packOutput(keyczar.primaryHash, ciphertext);
+        return keyczar_util.encodeBase64Url(outbytes);
     }
 
     keyczar.metadata = JSON.parse(data.meta);
@@ -99,13 +110,18 @@ function fromJson(serialized) {
 
     var t = keyczar.metadata.type;
     var p = keyczar.metadata.purpose;
+    var primaryKeyString = data[String(primaryVersion)];
     if (t == TYPE_RSA_PRIVATE && p == PURPOSE_DECRYPT_ENCRYPT) {
         keyczar.encrypt = rsa_encrypt;
         keyczar.decrypt = rsa_decrypt;
-        keyczar.primary = keyczar_util.privateKeyFromKeyczar(data[String(primaryVersion)]);
+        keyczar.primary = keyczar_util.privateKeyFromKeyczar(primaryKeyString);
+        keyczar.primaryHash = _rsaHash(keyczar);
+    } else if (t == TYPE_RSA_PUBLIC && p == PURPOSE_ENCRYPT) {
+        keyczar.encrypt = rsa_encrypt;
+        keyczar.primary = keyczar_util.publicKeyFromKeyczar(primaryKeyString);
         keyczar.primaryHash = _rsaHash(keyczar);
     } else {
-        throw new Error('Unsupported key type/purpose: ' + t + '/' + m);
+        throw new Error('Unsupported key type/purpose: ' + t + '/' + p);
     }
 
     return keyczar;

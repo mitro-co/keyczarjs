@@ -16,21 +16,19 @@ function testKeyczarRsa() {
     var decrypted = privatekey.decrypt(encrypted);
     assert.equal(message, decrypted);
 
-    // // round trip the message
-    // var encrypted2 = privatekey.encrypt(message);
-    // console.log(encrypted2);
-    // assert(encrypted2 != encrypted);
-    // decrypted = privatekey.decrypt(encrypted2);
-    // assert.equal(message, decrypted);
+    // round trip the message
+    var encrypted2 = privatekey.encrypt(message);
+    assert(encrypted2 != encrypted);
+    decrypted = privatekey.decrypt(encrypted2);
+    assert.equal(message, decrypted);
 
-    // // round trip the message using the public key
-    // var publickey = keyczar.fromJson(readTestData('publickey.json'));
-    // encrypted3 = privatekey.encrypt(message);
-    // console.log(encrypted3);
-    // assert.assert(encrypted3 != encrypted);
-    // assert.assert(encrypted3 != encrypted2);
-    // decrypted = privatekey.decrypt(encrypted3);
-    // assert.equal(message, decrypted);
+    // round trip the message using the public key
+    var publickey = keyczar.fromJson(readTestData('publickey.json'));
+    encrypted3 = privatekey.encrypt(message);
+    assert(encrypted3 != encrypted);
+    assert(encrypted3 != encrypted2);
+    decrypted = privatekey.decrypt(encrypted3);
+    assert.equal(message, decrypted);
 }
 
 var tests = [testKeyczarRsa];
