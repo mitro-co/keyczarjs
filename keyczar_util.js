@@ -117,6 +117,7 @@ function privateKeyFromKeyczar(serialized) {
     return forge.pki.setRsaPrivateKey(n, e, d, p, q, dP, dQ, qInv);
 }
 
+module.exports._bnToBytes = _bnToBytes;
 module.exports._base64ToBn = _base64ToBn;
 module.exports.decodeBase64Url = decodeBase64Url;
 module.exports.encodeBase64Url = encodeBase64Url;
