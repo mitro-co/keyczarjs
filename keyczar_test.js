@@ -11,34 +11,53 @@ function loadPrivateKey() {
     return keyczar.fromJson(readTestData('privatekey.json'));
 }
 
+// the message as written by Java Keyczar
+var EXAMPLE_MESSAGE = 'hello world message';
+
 function testKeyczarRsa() {
-    // decrypt the message as written by Java Keyczar
-    var message = 'hello world message';
     var privatekey = loadPrivateKey();
     var encrypted = readTestData('privatekey_encrypted');
     var decrypted = privatekey.decrypt(encrypted);
-    assert.equal(message, decrypted);
+    assert.equal(EXAMPLE_MESSAGE, decrypted);
 
     // round trip the message
-    var encrypted2 = privatekey.encrypt(message);
+    var encrypted2 = privatekey.encrypt(EXAMPLE_MESSAGE);
     assert(encrypted2 != encrypted);
     decrypted = privatekey.decrypt(encrypted2);
-    assert.equal(message, decrypted);
+    assert.equal(EXAMPLE_MESSAGE, decrypted);
 
     // round trip the message using the public key
     var publickey = keyczar.fromJson(readTestData('publickey.json'));
-    encrypted3 = privatekey.encrypt(message);
+    encrypted3 = privatekey.encrypt(EXAMPLE_MESSAGE);
     // there is a very small probability these will be the same; if the same seed is generated
     assert(encrypted3 != encrypted);
     assert(encrypted3 != encrypted2);
     decrypted = privatekey.decrypt(encrypted3);
-    assert.equal(message, decrypted);
+    assert.equal(EXAMPLE_MESSAGE, decrypted);
+}
 
+// Round trip every possible byte to ensure JS encoding doesn't screw things up
+function testEncryptAllBytes() {
+    message = ''
+    for (var i = 0; i < 256; i++) {
+        message += String.fromCharCode(i);
+    }
+    assert.equal(256, message.length);
+
+    var privateKey = loadPrivateKey();
+    assert.equal(message, privateKey.decrypt(privateKey.encrypt(message)));
+}
+
+function testSerializeKeys() {
     // round trip the keys to/from JSON
-    // serializedKey = keyczar.fromJson(publickey.toJson());
-    // encrypted = serializedKey.encrypt(message);
-    // var serializedKey = keyczar.fromJson(privatekey.toJson());
-    // assert.equal(message, serializedKey.decrypt(encrypted));
+    var privateKey = loadPrivateKey();
+    var publicKey = keyczar.exportPublicKey(privateKey);
+
+    var json = publicKey.toJson();
+    serializedKey = keyczar.fromJson(json);
+    encrypted = serializedKey.encrypt(EXAMPLE_MESSAGE);
+    var serializedKey = keyczar.fromJson(privateKey.toJson());
+    assert.equal(EXAMPLE_MESSAGE, serializedKey.decrypt(encrypted));
 }
 
 function testMaxLengthData() {
@@ -66,12 +85,11 @@ function testMakeExportRsa() {
     var publicKey = keyczar.exportPublicKey(privateKey);
 
     // Test round tripping using the exported key
-    var message = 'sample \x00 message';
-    var encrypted = publicKey.encrypt(message);
-    assert.equal(message, privateKey.decrypt(encrypted));
+    var encrypted = publicKey.encrypt(EXAMPLE_MESSAGE);
+    assert.equal(EXAMPLE_MESSAGE, privateKey.decrypt(encrypted));
 }
 
-var tests = [testKeyczarRsa, testMaxLengthData, testMakeExportRsa];
+var tests = [testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData, testMakeExportRsa];
 for (var i = 0; i < tests.length; i++) {
     tests[i]();
     process.stdout.write('.');

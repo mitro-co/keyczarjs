@@ -202,13 +202,29 @@ function _makeKeyczar(data) {
         keyczar.decrypt = rsa_decrypt;
         keyczar.primary = keyczar_util.privateKeyFromKeyczar(primaryKeyString);
         keyczar.primaryHash = _rsaHash(keyczar);
+        keyczar.primaryToJson = keyczar_util.privateKeyToKeyczar;
     } else if (t == TYPE_RSA_PUBLIC && p == PURPOSE_ENCRYPT) {
         keyczar.encrypt = rsa_encrypt;
         keyczar.primary = keyczar_util.publicKeyFromKeyczar(primaryKeyString);
         keyczar.primaryHash = _rsaHash(keyczar);
+        keyczar.primaryToJson = keyczar_util.publicKeyToKeyczar;
     } else {
         throw new Error('Unsupported key type/purpose: ' + t + '/' + p);
     }
+
+    // Returns the JSON serialization of this keyczar.
+    keyczar.toJson = function() {
+        var out = {};
+        out.meta = JSON.stringify(keyczar.metadata);
+
+        // TODO: Store and serialize ALL keys. For now this works
+        if (keyczar.metadata.versions.length != 1) {
+            throw new Error('TODO: Support keyczars with multiple keys');
+        }
+        var primaryVersion = _getPrimaryVersion(keyczar.metadata);
+        out[String(primaryVersion)] = keyczar.primaryToJson(keyczar.primary);
+        return JSON.stringify(out);
+    };
 
     return keyczar;
 }
