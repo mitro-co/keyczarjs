@@ -72,10 +72,10 @@ function rsa_oaep_decrypt(key, ciphertext, label) {
 
     if (!label) label = '';
     md.update(label);
-    var lHash = md.digest();
+    var lHash = md.digest().getBytes();
 
     // Split the message into its parts
-    var y = EM.charCodeAt(0);
+    var y = EM.charAt(0);
     var maskedSeed = EM.substring(1, md.digestLength + 1);
     var maskedDB = EM.substring(1 + md.digestLength);
 
@@ -87,22 +87,29 @@ function rsa_oaep_decrypt(key, ciphertext, label) {
 
     var lHashPrime = db.substring(0, md.digestLength);
 
-    // Constant time find the 0x1 byte separating the padding (zeros) from the message
+    // constant time check that all values match what is expected
+    var error = y != '\x00';
+
+    // constant time check lHash vs lHashPrime
+    for (var i = 0; i < md.digestLength; i++) {
+        error |= (lHash.charAt(i) != lHashPrime.charAt(i));
+    }
+
+    // "Constant time" find the 0x1 byte separating the padding (zeros) from the message
     // TODO: It must be possible to do this in a better/smarter way?
     var in_ps = 1;
     var index = md.digestLength;
-    var error = 0;
     for (var i = md.digestLength; i < db.length; i++) {
         var code = db.charCodeAt(i);
 
-        var is_1 = (code & 0x1) ^ 0x1;
+        var is_0 = (code & 0x1) ^ 0x1;
 
         // non-zero if not 0 or 1 in the ps section
         var error_mask = in_ps ? 0xfffe : 0x0000;
         error |= (code & error_mask);
 
-        // latch in_ps to zero after we find is_1
-        in_ps = in_ps & is_1;
+        // latch in_ps to zero after we find 0x1
+        in_ps = in_ps & is_0;
         index += in_ps;
     }
 

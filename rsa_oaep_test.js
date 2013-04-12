@@ -38,6 +38,49 @@ function decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv) {
     return forge.pki.setRsaPrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
 }
 
+function testCorruptDecrypt() {
+    var modulus, exponent, d, p, q, dP, dQ, qInv, pubkey, privateKey, message, seed, encrypted;
+
+    //  Example 1: A 1024-bit RSA Key Pair
+    modulus = 'qLOyhK+OtQs4cDSoYPFGxJGfMYdjzWxVmMiuSBGh4KvEx+CwgtaTpef87Wdc9GaFEncsDLxkp0LGxjD1M8jMcvYq6DPEC/JYQumEu3i9v5fAEH1VvbZi9cTg+rmEXLUUjvc5LdOq/5OuHmtme7PUJHYW1PW6ENTP0ibeiNOfFvs=';
+    exponent = 'AQAB';
+    d = 'UzOc/befyEZqZVxzFqyoXFX9j23YmP2vEZUX709S6P2OJY35P+4YD6DkqylpPNg7FSpVPUrE0YEri5+lrw5/Vf5zBN9BVwkm8zEfFcTWWnMsSDEW7j09LQrzVJrZv3y/t4rYhPhNW+sEck3HNpsx3vN9DPU56c/N095lNynq1dE=';
+    p = '0yc35yZ//hNBstXA0VCoG1hvsxMr7S+NUmKGSpy58wrzi+RIWY1BOhcu+4AsIazxwRxSDC8mpHHcrSEurHyjnQ==';
+    q = 'zIhT0dVNpjD6wAT0cfKBx7iYLYIkpJDtvrM9Pj1cyTxHZXA9HdeRZC8fEWoN2FK+JBmyr3K/6aAw6GCwKItddw==';
+    dP = 'DhK/FxjpzvVZm6HDiC/oBGqQh07vzo8szCDk8nQfsKM6OEiuyckwX77L0tdoGZZ9RnGsxkMeQDeWjbN4eOaVwQ==';
+    dQ = 'lSl7D5Wi+mfQBwfWCd/U/AXIna/C721upVvsdx6jM3NNklHnkILs2oZu/vE8RZ4aYxOGt+NUyJn18RLKhdcVgw==';
+    qInv = 'T0VsUCSTvcDtKrdWo6btTWc1Kml9QhbpMhKxJ6Y9VBHOb6mNXb79cyY+NygUJ0OBgWbtfdY2h90qjKHS9PvY4Q==';
+    pubkey = decodeBase64PublicKey(modulus, exponent);
+    privateKey = decodeBase64PrivateKey(modulus, exponent, d, p, q, dP, dQ, qInv);
+
+    seed = forge.util.decode64('JRTfRpV1WmeyiOr0kFw27sZv0v0=');
+
+    // Test decrypting corrupted data: flip every bit in the message
+    // this tests the padding error handling
+    encrypted = rsa_oaep.rsa_oaep_encrypt(pubkey, 'datadatadatadata', '', seed);
+    for (var bit = 0; bit < encrypted.length * 8; bit++) {
+        var byte = bit / 8;
+        var bitInByte = bit % 8;
+
+        out = encrypted.substring(0, byte);
+        var mask = 0x1 << bitInByte;
+        out += String.fromCharCode(encrypted.charCodeAt(byte) ^ mask);
+        out += encrypted.substring(byte + 1);
+
+        try {
+            output = rsa_oaep.rsa_oaep_decrypt(privateKey, out);
+            console.log('Error: expected an exception!', bit, byte, bitInByte, mask);
+            console.log(output);
+            assert(false);
+        } catch (e) {
+            if (e.message != 'Decryption error: invalid padding') {
+                throw e;
+            }
+        }
+        process.stdout.write('.');
+    }
+}
+
 function testOAEP() {
     var modulus, exponent, d, p, q, dP, dQ, qInv, pubkey, privateKey, message, seed, encrypted;
 
@@ -532,5 +575,6 @@ function testOAEP() {
     checkOAEPEncrypt(pubkey, privateKey, message, seed, encrypted);
 }
 
+testCorruptDecrypt();
 testOAEP();
 console.log('success');
