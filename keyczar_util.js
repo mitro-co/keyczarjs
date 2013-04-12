@@ -123,6 +123,74 @@ function privateKeyFromKeyczar(serialized) {
     return forge.pki.setRsaPrivateKey(n, e, d, p, q, dP, dQ, qInv);
 }
 
+var MODE_CBC = 'CBC';
+
+// Returns a Keyczar AES key object from the serialized JSON representation.
+function aesFromKeyczar(serialized) {
+    var obj = JSON.parse(serialized);
+    if (obj.mode != MODE_CBC) {
+        throw new Error('Unsupported cipher mode: ' + obj.mode);
+    }
+
+    var keyBytes = decodeBase64Url(obj.aesKeyString);
+    if (keyBytes.length != obj.size/8) {
+        throw new Error('Mismatched key sizes: ' + keyBytes.length + ' != ' + (obj.size/8));
+    }
+
+    var hmacBytes = decodeBase64Url(obj.hmacKey.hmacKeyString);
+    if (hmacBytes.length != obj.hmacKey.size/8) {
+        throw new Error('Mismatched hmac key sizes: ' +
+            hmacBytes.length + ' != ' + (obj.hmacKey.size/8));
+    }
+
+    var aesObject = forge.aes.createEncryptionCipher(keyBytes);
+    var hmacObject = forge.hmac.create(forge.md.sha1.create(), hmacBytes);
+
+    var key = {};
+    key.encrypt = function(input) {
+        // generate a random IV
+        iv = forge.random.getBytes(keyBytes.length);
+
+        // TODO: cache the cipher object?
+        cipher = forge.aes.startEncrypting(keyBytes, iv, null);
+        cipher.update(new forge.util.ByteBuffer(input));
+        success = cipher.finish();
+        if (!success) {
+            throw new Error('AES encryption failed');
+        }
+        return iv + cipher.output.getBytes();
+    };
+
+    key.decrypt = function(message) {
+        var iv = message.substring(0, keyBytes.length);
+        var ciphertext = message.substring(keyBytes.length);
+
+        cipher = forge.aes.startDecrypting(keyBytes, iv, null);
+        cipher.update(new forge.util.ByteBuffer(ciphertext));
+        success = cipher.finish();
+        if (!success) {
+            throw new Error('AES decryption failed');
+        }
+        return cipher.output.getBytes();
+    };
+
+    key.toJson = function() {
+        data = {
+            aesKeyString: encodeBase64Url(keyBytes),
+            size: keyBytes.length*8,
+            mode: MODE_CBC,
+
+            hmacKey: {
+                hmacKeyString: encodeBase64Url(hmacBytes),
+                size: hmacBytes.length*8
+            }
+        };
+        return JSON.stringify(data);
+    };
+
+    return key;
+}
+
 module.exports._bnToBytes = _bnToBytes;
 module.exports._base64ToBn = _base64ToBn;
 module.exports.decodeBase64Url = decodeBase64Url;
@@ -132,3 +200,4 @@ module.exports.publicKeyFromKeyczar = publicKeyFromKeyczar;
 module.exports.privateKeyToKeyczar = privateKeyToKeyczar;
 module.exports.privateKeyFromKeyczar = privateKeyFromKeyczar;
 module.exports._privateKeyToKeyczarObject = _privateKeyToKeyczarObject;
+module.exports.aesFromKeyczar = aesFromKeyczar;

@@ -74,4 +74,24 @@ function testBase64Url() {
     });
 }
 
+var KEYCZAR_AES = '{"aesKeyString":"Fg9MqSniawfwlXb0BwvBfQ","hmacKey":{"hmacKeyString":"2UP8uP9UuHxjHnZyF3GxnJ-BIO0M-_5qYfQy2SvCZ9w","size":256},"mode":"CBC","size":128}';
+function testAesKeyczarConversion() {
+    var aes = keyczar_util.aesFromKeyczar(KEYCZAR_AES);
+
+    // Roundtrip with the key
+    var message = 'hello this is a message';
+    var ciphertext = aes.encrypt(message);
+    assert(ciphertext != message);
+    var decoded = aes.decrypt(ciphertext);
+    assert.equal(decoded, message);
+
+    var roundtripped = keyczar_util.aesFromKeyczar(aes.toJson());
+    assert.equal(message, roundtripped.decrypt(ciphertext));
+    var ciphertext2 = roundtripped.encrypt(message);
+    assert.equal(message, roundtripped.decrypt(ciphertext2));
+
+    // original key can decrypt the roundtripped key's message
+    assert.equal(message, aes.decrypt(ciphertext2));
+}
+
 test_util.runTests([testBase64Url, testKeyczarConversion, testAesKeyczarConversion]);
