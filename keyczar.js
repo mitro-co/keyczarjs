@@ -12,7 +12,6 @@ var STATUS_PRIMARY = 'PRIMARY';
 var RSA_DEFAULT_BITS = 4096;
 
 var VERSION_BYTE = '\x00';
-var KEYHASH_LENGTH = 4;
 
 // Unpacks Keyczar's output format
 function _unpackOutput(encoded) {
@@ -21,55 +20,17 @@ function _unpackOutput(encoded) {
         throw new Error('Unsupported version byte: ' + messageBytes.charCodeAt(0));
     }
 
-    keyhash = messageBytes.substr(1, KEYHASH_LENGTH);
-    message = messageBytes.substr(1+KEYHASH_LENGTH);
+    keyhash = messageBytes.substr(1, keyczar_util.KEYHASH_LENGTH);
+    message = messageBytes.substr(1 + keyczar_util.KEYHASH_LENGTH);
     return {keyhash: keyhash, message: message};
 }
 
 function _packOutput(keyhash, message) {
-    if (keyhash.length != KEYHASH_LENGTH) {
+    if (keyhash.length != keyczar_util.KEYHASH_LENGTH) {
         throw new Error('Invalid keyhash length: ' + keyhash.length);
     }
 
     return VERSION_BYTE + keyhash + message;
-}
-
-function _stripLeadingZeros(bytes) {
-    var nonZeroIndex = 0;
-    while (nonZeroIndex < bytes.length && bytes.charAt(nonZeroIndex) == '\x00') {
-        nonZeroIndex += 1;
-    }
-    return bytes.substring(nonZeroIndex);
-}
-
-function _encodeBigEndian(number) {
-    b1 = String.fromCharCode((number >> 24) & 0xff);
-    b2 = String.fromCharCode((number >> 16) & 0xff);
-    b3 = String.fromCharCode((number >> 8) & 0xff);
-    b4 = String.fromCharCode(number & 0xff);
-    return b1 + b2 + b3 + b4;
-}
-
-function _hashBigNumber(md, bigNumber) {
-    bytes = keyczar_util._bnToBytes(bigNumber);
-    bytes = _stripLeadingZeros(bytes);
-
-    md.update(_encodeBigEndian(bytes.length));
-    md.update(bytes);
-}
-
-// Returns the keyhash for an RSA public key.
-function _rsaHash(publickey) {
-    md = forge.md.sha1.create();
-
-    // hash:
-    // 4-byte big endian length
-    // "magnitude" of the public modulus (trim all leading zero bytes)
-    // same for the exponent
-    _hashBigNumber(md, publickey.primary.n);
-    _hashBigNumber(md, publickey.primary.e);
-    var digest = md.digest();
-    return digest.data.substring(0, KEYHASH_LENGTH);
 }
 
 // Returns a new Keyczar key. Note: this is slow for RSA keys.
@@ -107,7 +68,7 @@ function create(options) {
     // TODO: This serializes/deserializes the keys; change _makeKeyczar to not parse strings?
     var data = {
         meta: JSON.stringify(metadata),
-        "1": keyczar_util.privateKeyToKeyczar(generator.keys.privateKey)
+        "1": keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey)
     };
 
     return _makeKeyczar(data);
@@ -138,7 +99,7 @@ function exportPublicKey(key) {
     var data = {
         meta: JSON.stringify(metadata)
     };
-    data[String(primaryVersion)] = keyczar_util.publicKeyToKeyczar(key.primary);
+    data[String(primaryVersion)] = key.primary.exportPublicKeyJson();
     return _makeKeyczar(data);
 }
 
@@ -170,23 +131,6 @@ function _getPrimaryVersion(metadata) {
 function _makeKeyczar(data) {
     var keyczar = {};
 
-    function rsa_decrypt(message) {
-        message = _unpackOutput(message);
-        if (message.keyhash != keyczar.primaryHash) {
-            primaryHex = forge.util.bytesToHex(keyczar.primaryHash);
-            actualHex = forge.util.bytesToHex(message.keyhash);
-            throw new Error('Mismatched keyhash (primary: ' +
-                primaryHex + ' actual: ' + actualHex + ')');
-        }
-        return rsa_oaep.rsa_oaep_decrypt(keyczar.primary, message.message);
-    }
-
-    function rsa_encrypt(message) {
-        var ciphertext = rsa_oaep.rsa_oaep_encrypt(keyczar.primary, message);
-        outbytes = _packOutput(keyczar.primaryHash, ciphertext);
-        return keyczar_util.encodeBase64Url(outbytes);
-    }
-
     keyczar.metadata = JSON.parse(data.meta);
     if (keyczar.metadata.encrypted !== false) {
         throw new Error('Encrypted keys not supported');
@@ -198,19 +142,29 @@ function _makeKeyczar(data) {
     var p = keyczar.metadata.purpose;
     var primaryKeyString = data[String(primaryVersion)];
     if (t == TYPE_RSA_PRIVATE && p == PURPOSE_DECRYPT_ENCRYPT) {
-        keyczar.encrypt = rsa_encrypt;
-        keyczar.decrypt = rsa_decrypt;
         keyczar.primary = keyczar_util.privateKeyFromKeyczar(primaryKeyString);
-        keyczar.primaryHash = _rsaHash(keyczar);
-        keyczar.primaryToJson = keyczar_util.privateKeyToKeyczar;
     } else if (t == TYPE_RSA_PUBLIC && p == PURPOSE_ENCRYPT) {
-        keyczar.encrypt = rsa_encrypt;
         keyczar.primary = keyczar_util.publicKeyFromKeyczar(primaryKeyString);
-        keyczar.primaryHash = _rsaHash(keyczar);
-        keyczar.primaryToJson = keyczar_util.publicKeyToKeyczar;
     } else {
         throw new Error('Unsupported key type/purpose: ' + t + '/' + p);
     }
+
+    keyczar.encrypt = function(plaintext) {
+        var ciphertext = keyczar.primary.encrypt(plaintext);
+        outbytes = _packOutput(keyczar.primary.keyhash, ciphertext);
+        return keyczar_util.encodeBase64Url(outbytes);
+    };
+
+    keyczar.decrypt = function(message) {
+        message = _unpackOutput(message);
+        if (message.keyhash != keyczar.primary.keyhash) {
+            var primaryHex = forge.util.bytesToHex(keyczar.primary.keyhash);
+            var actualHex = forge.util.bytesToHex(message.keyhash);
+            throw new Error('Mismatched keyhash (primary: ' +
+                primaryHex + ' actual: ' + actualHex + ')');
+        }
+        return keyczar.primary.decrypt(message.message);
+    };
 
     // Returns the JSON serialization of this keyczar.
     keyczar.toJson = function() {
@@ -222,7 +176,7 @@ function _makeKeyczar(data) {
             throw new Error('TODO: Support keyczars with multiple keys');
         }
         var primaryVersion = _getPrimaryVersion(keyczar.metadata);
-        out[String(primaryVersion)] = keyczar.primaryToJson(keyczar.primary);
+        out[String(primaryVersion)] = keyczar.primary.toJson();
         return JSON.stringify(out);
     };
 

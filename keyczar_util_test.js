@@ -29,30 +29,19 @@ var privateKeyPem = '-----BEGIN RSA PRIVATE KEY-----' +
 
 function testKeyczarConversion() {
     // load a known public key; format it as a keyczar key
-    var pubkey = forge.pki.publicKeyFromPem(pubkeyPem);
-    var keyczarSerialized = keyczar_util.publicKeyToKeyczar(pubkey);
-    var roundtripped = keyczar_util.publicKeyFromKeyczar(keyczarSerialized);
+    var rsa = forge.pki.publicKeyFromPem(pubkeyPem);
+    var keyczarSerialized = keyczar_util._rsaPublicKeyToKeyczarJson(rsa);
+    var publicKey = keyczar_util.publicKeyFromKeyczar(keyczarSerialized);
 
     // load the known private key; format it as a keyczar key
-    var privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+    var rsa = forge.pki.privateKeyFromPem(privateKeyPem);
+    keyczarSerialized = keyczar_util._rsaPrivateKeyToKeyczarJson(rsa);
+    var privateKey = keyczar_util.privateKeyFromKeyczar(keyczarSerialized);
 
     // Encrypt message with the key 
     var message = 'hello this is a message';
-    var ciphertext = pubkey.encrypt(message);
+    var ciphertext = publicKey.encrypt(message);
     var decoded = privateKey.decrypt(ciphertext);
-    assert.equal(decoded, message);
-
-    // Encrypt it with the roundtripped public key
-    ciphertext = roundtripped.encrypt(message);
-    decoded = privateKey.decrypt(ciphertext);
-    assert.equal(decoded, message);
-
-    // Round trip the private key
-    keyczarSerialized = keyczar_util.privateKeyToKeyczar(privateKey);
-    roundtripped = keyczar_util.privateKeyFromKeyczar(keyczarSerialized);
-
-    // decrypt the message with the roundtripped key
-    decoded = roundtripped.decrypt(ciphertext);
     assert.equal(decoded, message);
 }
 

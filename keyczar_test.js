@@ -65,7 +65,7 @@ function testMaxLengthData() {
     var privateKey = loadPrivateKey();
 
     // Round trip maximum length data
-    var maxEncryptLength = Math.ceil(privateKey.primary.n.bitLength() / 8) - 2 * 20 - 2;
+    var maxEncryptLength = Math.ceil(privateKey.primary.size / 8) - 2 * 20 - 2;
     var maxLengthData = '';
     for (var i = 0; i < maxEncryptLength; i++) {
         maxLengthData += 'a';
@@ -90,6 +90,5 @@ function testMakeExportRsa() {
     assert.equal(EXAMPLE_MESSAGE, privateKey.decrypt(encrypted));
 }
 
-
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
-    testMakeExportRsa, testSymmetric]);
+    testMakeExportRsa]);

@@ -1,5 +1,10 @@
 var forge = require('forge');
 
+var rsa_oaep = require('./rsa_oaep');
+
+var KEYHASH_LENGTH = 4;
+var MODE_CBC = 'CBC';
+
 /** Copied from forge.pki.js because it is not public */
 var _bnToBytes = function(b) {
     // prepend 0x00 if first byte >= 0x80
@@ -48,16 +53,56 @@ function encodeBase64Url(message) {
     return message.replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-function _publicKeyToKeyczarJson(key) {
+function _stripLeadingZeros(bytes) {
+    var nonZeroIndex = 0;
+    while (nonZeroIndex < bytes.length && bytes.charAt(nonZeroIndex) == '\x00') {
+        nonZeroIndex += 1;
+    }
+    return bytes.substring(nonZeroIndex);
+}
+
+function _encodeBigEndian(number) {
+    b1 = String.fromCharCode((number >> 24) & 0xff);
+    b2 = String.fromCharCode((number >> 16) & 0xff);
+    b3 = String.fromCharCode((number >> 8) & 0xff);
+    b4 = String.fromCharCode(number & 0xff);
+    return b1 + b2 + b3 + b4;
+}
+
+function _hashBigNumber(md, bigNumber) {
+    var bytes = _bnToBytes(bigNumber);
+    bytes = _stripLeadingZeros(bytes);
+
+    md.update(_encodeBigEndian(bytes.length));
+    md.update(bytes);
+}
+
+// Returns the keyhash for an RSA public key.
+function _rsaHash(publicKey) {
+    var md = forge.md.sha1.create();
+
+    // hash:
+    // 4-byte big endian length
+    // "magnitude" of the public modulus (trim all leading zero bytes)
+    // same for the exponent
+    _hashBigNumber(md, publicKey.n);
+    _hashBigNumber(md, publicKey.e);
+    var digest = md.digest();
+    return digest.data.substring(0, KEYHASH_LENGTH);
+}
+
+function _rsaPublicKeyToKeyczarObject(publicKey) {
     return {
-        modulus: _bnToBase64(key.n),
-        publicExponent: _bnToBase64(key.e),
-        size: key.n.bitLength()
+        modulus: _bnToBase64(publicKey.n),
+        publicExponent: _bnToBase64(publicKey.e),
+        size: publicKey.n.bitLength()
     };
 }
 
-function publicKeyToKeyczar(key) {
-    return JSON.stringify(_publicKeyToKeyczarJson(key));
+// Returns the JSON string representing publicKey in Keyczar's format.
+function _rsaPublicKeyToKeyczarJson(publicKey) {
+    var obj = _rsaPublicKeyToKeyczarObject(publicKey);
+    return JSON.stringify(obj);
 }
 
 function _bytesToBigInteger(bytes) {
@@ -71,16 +116,9 @@ function _base64ToBn(s) {
     return _bytesToBigInteger(decoded);
 }
 
-function publicKeyFromKeyczar(serialized) {
-    var obj = JSON.parse(serialized);
-    var modulus = _base64ToBn(obj.modulus);
-    var exponent = _base64ToBn(obj.publicExponent);
-    return forge.pki.setRsaPublicKey(modulus, exponent);
-}
-
 function _privateKeyToKeyczarObject(key) {
     var obj = {
-        publicKey: _publicKeyToKeyczarJson(key),
+        publicKey: _rsaPublicKeyToKeyczarObject(key),
 
         privateExponent: _bnToBase64(key.d),
         primeP: _bnToBase64(key.p),
@@ -99,14 +137,40 @@ function _privateKeyToKeyczarObject(key) {
     return obj;
 }
 
-// TODO: Rename this privateKeyToKeyczarJson?
-function privateKeyToKeyczar(key) {
+function _rsaPrivateKeyToKeyczarJson(key) {
     var obj = _privateKeyToKeyczarObject(key);
     return JSON.stringify(obj);
 }
 
+// Returns a key object for an RSA key.
+function _makeRsaKey(rsaKey) {
+    var key = {
+        keyhash: _rsaHash(rsaKey),
+        size: rsaKey.n.bitLength()
+    };
+
+    key.encrypt = function(plaintext) {
+        return rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
+    };
+    return key;
+}
+
+function publicKeyFromKeyczar(serialized) {
+    var obj = JSON.parse(serialized);
+    var modulus = _base64ToBn(obj.modulus);
+    var exponent = _base64ToBn(obj.publicExponent);
+    var rsaKey = forge.pki.setRsaPublicKey(modulus, exponent);
+
+    var key = _makeRsaKey(rsaKey);
+
+    key.toJson = function() {
+        return _rsaPublicKeyToKeyczarJson(rsaKey);
+    };
+    return key;
+}
+
 function privateKeyFromKeyczar(serialized) {
-    obj = JSON.parse(serialized);
+    var obj = JSON.parse(serialized);
 
     // public key parts
     var n = _base64ToBn(obj.publicKey.modulus);
@@ -119,11 +183,25 @@ function privateKeyFromKeyczar(serialized) {
     var dP = _base64ToBn(obj.primeExponentP);
     var dQ = _base64ToBn(obj.primeExponentQ);
     var qInv = _base64ToBn(obj.crtCoefficient);
+    var rsaKey = forge.pki.setRsaPrivateKey(n, e, d, p, q, dP, dQ, qInv);
 
-    return forge.pki.setRsaPrivateKey(n, e, d, p, q, dP, dQ, qInv);
+    var key = _makeRsaKey(rsaKey);
+
+    key.decrypt = function(ciphertext) {
+        return rsa_oaep.rsa_oaep_decrypt(rsaKey, ciphertext);
+    };
+
+    /** Returns a JSON string containing the public part of this key. */
+    key.exportPublicKeyJson = function() {
+        return _rsaPublicKeyToKeyczarJson(rsaKey);
+    };
+
+    key.toJson = function() {
+        return _rsaPrivateKeyToKeyczarJson(rsaKey);
+    };
+
+    return key;
 }
-
-var MODE_CBC = 'CBC';
 
 // Returns a Keyczar AES key object from the serialized JSON representation.
 function aesFromKeyczar(serialized) {
@@ -191,13 +269,14 @@ function aesFromKeyczar(serialized) {
     return key;
 }
 
+module.exports.KEYHASH_LENGTH = KEYHASH_LENGTH;
 module.exports._bnToBytes = _bnToBytes;
 module.exports._base64ToBn = _base64ToBn;
 module.exports.decodeBase64Url = decodeBase64Url;
 module.exports.encodeBase64Url = encodeBase64Url;
-module.exports.publicKeyToKeyczar = publicKeyToKeyczar;
+module.exports._rsaPrivateKeyToKeyczarJson = _rsaPrivateKeyToKeyczarJson;
+module.exports._rsaPublicKeyToKeyczarJson = _rsaPublicKeyToKeyczarJson;
 module.exports.publicKeyFromKeyczar = publicKeyFromKeyczar;
-module.exports.privateKeyToKeyczar = privateKeyToKeyczar;
 module.exports.privateKeyFromKeyczar = privateKeyFromKeyczar;
 module.exports._privateKeyToKeyczarObject = _privateKeyToKeyczarObject;
 module.exports.aesFromKeyczar = aesFromKeyczar;
