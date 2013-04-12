@@ -1,7 +1,8 @@
 var assert = require('assert');
 var forge = require('forge');
 
-var keyczar_util = require('./keyczar_util')
+var keyczar_util = require('./keyczar_util');
+var test_util = require('./test_util');
 
 var pubkeyPem = '-----BEGIN PUBLIC KEY-----' +
 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDCjvkkLWNTeYXqEsqGiVCW/pDt' +
@@ -73,6 +74,4 @@ function testBase64Url() {
     });
 }
 
-testBase64Url();
-testKeyczarConversion();
-console.log('success');
+test_util.runTests([testBase64Url, testKeyczarConversion, testAesKeyczarConversion]);

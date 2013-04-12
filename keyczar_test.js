@@ -2,6 +2,7 @@ var assert = require('assert');
 var fs = require('fs');
 
 var keyczar = require('./keyczar');
+var test_util = require('./test_util');
 
 function readTestData(name) {
     return fs.readFileSync('testdata/' + name, {encoding: 'utf-8'});
@@ -38,7 +39,7 @@ function testKeyczarRsa() {
 
 // Round trip every possible byte to ensure JS encoding doesn't screw things up
 function testEncryptAllBytes() {
-    message = ''
+    var message = '';
     for (var i = 0; i < 256; i++) {
         message += String.fromCharCode(i);
     }
@@ -89,9 +90,6 @@ function testMakeExportRsa() {
     assert.equal(EXAMPLE_MESSAGE, privateKey.decrypt(encrypted));
 }
 
-var tests = [testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData, testMakeExportRsa];
-for (var i = 0; i < tests.length; i++) {
-    tests[i]();
-    process.stdout.write('.');
-}
-console.log('success');
+
+test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
+    testMakeExportRsa, testSymmetric]);

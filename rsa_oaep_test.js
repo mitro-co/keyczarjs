@@ -4,6 +4,7 @@ var forge = require('forge');
 
 var rsa_oaep = require('./rsa_oaep');
 var keyczar_util = require('./keyczar_util');
+var test_util = require('./test_util');
 
 function checkOAEPEncrypt(pubkey, privateKey, message, seed, expected) {
     message = forge.util.decode64(message);
@@ -575,6 +576,4 @@ function testOAEP() {
     checkOAEPEncrypt(pubkey, privateKey, message, seed, encrypted);
 }
 
-testCorruptDecrypt();
-testOAEP();
-console.log('success');
+test_util.runTests([testCorruptDecrypt, testOAEP]);
