@@ -78,7 +78,7 @@ function publicKeyFromKeyczar(serialized) {
     return forge.pki.setRsaPublicKey(modulus, exponent);
 }
 
-function privateKeyToKeyczar(key) {
+function _privateKeyToKeyczarObject(key) {
     var obj = {
         publicKey: _publicKeyToKeyczarJson(key),
 
@@ -96,6 +96,12 @@ function privateKeyToKeyczar(key) {
         throw new Error("Incorrect calculation of private key size? " + obj.size + " != " + obj.publicKey.size);
     }
 
+    return obj;
+}
+
+// TODO: Rename this privateKeyToKeyczarJson?
+function privateKeyToKeyczar(key) {
+    var obj = _privateKeyToKeyczarObject(key);
     return JSON.stringify(obj);
 }
 
@@ -125,3 +131,4 @@ module.exports.publicKeyToKeyczar = publicKeyToKeyczar;
 module.exports.publicKeyFromKeyczar = publicKeyFromKeyczar;
 module.exports.privateKeyToKeyczar = privateKeyToKeyczar;
 module.exports.privateKeyFromKeyczar = privateKeyFromKeyczar;
+module.exports._privateKeyToKeyczarObject = _privateKeyToKeyczarObject;
