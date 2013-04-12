@@ -90,5 +90,24 @@ function testMakeExportRsa() {
     assert.equal(EXAMPLE_MESSAGE, privateKey.decrypt(encrypted));
 }
 
+function testSymmetric() {
+    var key = keyczar.fromJson(readTestData('symmetric.json'));
+    var encrypted = readTestData('symmetric_encrypted');
+    var decrypted = key.decrypt(encrypted);
+    assert.equal(EXAMPLE_MESSAGE, decrypted);
+
+    var encrypted2 = key.encrypt(EXAMPLE_MESSAGE);
+    decrypted = key.decrypt(encrypted);
+    assert(encrypted2 != encrypted);
+    assert.equal(EXAMPLE_MESSAGE, decrypted);
+
+    // round trip the key
+    key = keyczar.fromJson(key.toJson());
+    var encrypted3 = key.encrypt(EXAMPLE_MESSAGE);
+    assert.equal(EXAMPLE_MESSAGE, key.decrypt(encrypted));
+    assert.equal(EXAMPLE_MESSAGE, key.decrypt(encrypted2));
+    assert.equal(EXAMPLE_MESSAGE, key.decrypt(encrypted3));
+}
+
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
-    testMakeExportRsa]);
+    testMakeExportRsa, testSymmetric]);

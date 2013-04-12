@@ -5,6 +5,36 @@ var rsa_oaep = require('./rsa_oaep');
 var KEYHASH_LENGTH = 4;
 var MODE_CBC = 'CBC';
 
+var VERSION_BYTE = '\x00';
+
+// Unpacks Keyczar's output format
+function _unpackOutput(message) {
+    if (message.charAt(0) != VERSION_BYTE) {
+        throw new Error('Unsupported version byte: ' + message.charCodeAt(0));
+    }
+
+    keyhash = message.substr(1, KEYHASH_LENGTH);
+    message = message.substr(1 + KEYHASH_LENGTH);
+    return {keyhash: keyhash, message: message};
+}
+
+function _packOutput(keyhash, message) {
+    if (keyhash.length != KEYHASH_LENGTH) {
+        throw new Error('Invalid keyhash length: ' + keyhash.length);
+    }
+
+    return VERSION_BYTE + keyhash + message;
+}
+
+function _checkKeyHash(keyhash, unpackedMessage) {
+    if (unpackedMessage.keyhash != keyhash) {
+        var primaryHex = forge.util.bytesToHex(keyhash);
+        var actualHex = forge.util.bytesToHex(unpackedMessage.keyhash);
+        throw new Error('Mismatched keyhash (primary: ' +
+            primaryHex + ' actual: ' + actualHex + ')');
+    }
+}
+
 /** Copied from forge.pki.js because it is not public */
 var _bnToBytes = function(b) {
     // prepend 0x00 if first byte >= 0x80
@@ -150,7 +180,8 @@ function _makeRsaKey(rsaKey) {
     };
 
     key.encrypt = function(plaintext) {
-        return rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
+        ciphertext = rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
+        return _packOutput(key.keyhash, ciphertext);
     };
     return key;
 }
@@ -187,8 +218,10 @@ function privateKeyFromKeyczar(serialized) {
 
     var key = _makeRsaKey(rsaKey);
 
-    key.decrypt = function(ciphertext) {
-        return rsa_oaep.rsa_oaep_decrypt(rsaKey, ciphertext);
+    key.decrypt = function(message) {
+        message = _unpackOutput(message);
+        _checkKeyHash(key.keyhash, message);
+        return rsa_oaep.rsa_oaep_decrypt(rsaKey, message.message);
     };
 
     /** Returns a JSON string containing the public part of this key. */
@@ -201,6 +234,18 @@ function privateKeyFromKeyczar(serialized) {
     };
 
     return key;
+}
+
+function constantTimeEquals(s1, s2) {
+    if (s1.length != s2.length) {
+        throw new Error('Invalid arguments: strings must be the same length');
+    }
+
+    var equals = 1;
+    for (var i = 0; i < s1.length; i++) {
+        equals &= s1.charAt(i) == s2.charAt(i);
+    }
+    return equals;
 }
 
 // Returns a Keyczar AES key object from the serialized JSON representation.
@@ -222,9 +267,20 @@ function aesFromKeyczar(serialized) {
     }
 
     var aesObject = forge.aes.createEncryptionCipher(keyBytes);
-    var hmacObject = forge.hmac.create(forge.md.sha1.create(), hmacBytes);
+    var mdObject = forge.md.sha1.create();
+    var hmacObject = forge.hmac.create();
+    hmacObject.start(mdObject, hmacBytes);
 
-    var key = {};
+    // calculate the keyhash
+    var md = forge.md.sha1.create();
+    md.update(_encodeBigEndian(keyBytes.length));
+    md.update(keyBytes);
+    md.update(hmacBytes);
+    var keyhash = md.digest().data.substring(0, KEYHASH_LENGTH);
+
+    var key = {
+        keyhash: keyhash
+    };
     key.encrypt = function(input) {
         // generate a random IV
         iv = forge.random.getBytes(keyBytes.length);
@@ -236,18 +292,39 @@ function aesFromKeyczar(serialized) {
         if (!success) {
             throw new Error('AES encryption failed');
         }
-        return iv + cipher.output.getBytes();
+
+        output = _packOutput(key.keyhash, iv + cipher.output.getBytes());
+
+        // compute the HMAC over the entire message
+        hmacObject.start(null, null);
+        hmacObject.update(output);
+        hmac = hmacObject.getMac();
+        return output + hmac.data;
     };
 
     key.decrypt = function(message) {
-        var iv = message.substring(0, keyBytes.length);
-        var ciphertext = message.substring(keyBytes.length);
+        unpacked = _unpackOutput(message);
+        _checkKeyHash(key.keyhash, unpacked);
+
+        // check the HMAC over the entire message
+        var hmac = message.substring(message.length - mdObject.digestLength);
+        hmacObject.start(null, null);
+        hmacObject.update(message.substring(0, message.length - mdObject.digestLength));
+        hmacPrime = hmacObject.getMac().data;
+
+        if (!constantTimeEquals(hmac, hmacPrime)) {
+            throw new Error('Decryption failed: HMAC does not match');
+        }
+
+        // split the message into parts
+        var iv = unpacked.message.substring(0, keyBytes.length);
+        var ciphertext = unpacked.message.substring(keyBytes.length, unpacked.message.length - mdObject.digestLength);
 
         cipher = forge.aes.startDecrypting(keyBytes, iv, null);
         cipher.update(new forge.util.ByteBuffer(ciphertext));
         success = cipher.finish();
         if (!success) {
-            throw new Error('AES decryption failed');
+            throw new Error('Decryption failed: AES error?');
         }
         return cipher.output.getBytes();
     };

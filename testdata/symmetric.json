@@ -1,0 +1,1 @@
+{"meta":"{\"name\":\"\",\"purpose\":\"DECRYPT_AND_ENCRYPT\",\"type\":\"AES\",\"versions\":[{\"exportable\":false,\"status\":\"PRIMARY\",\"versionNumber\":1}],\"encrypted\":false}","1":"{\"aesKeyString\":\"Fg9MqSniawfwlXb0BwvBfQ\",\"hmacKey\":{\"hmacKeyString\":\"2UP8uP9UuHxjHnZyF3GxnJ-BIO0M-_5qYfQy2SvCZ9w\",\"size\":256},\"mode\":\"CBC\",\"size\":128}"}

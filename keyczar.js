@@ -3,6 +3,7 @@ var forge = require('forge');
 var keyczar_util = require('./keyczar_util');
 var rsa_oaep = require('./rsa_oaep');
 
+var TYPE_AES = 'AES';
 var TYPE_RSA_PRIVATE = 'RSA_PRIV';
 var TYPE_RSA_PUBLIC = 'RSA_PUB';
 var PURPOSE_DECRYPT_ENCRYPT = 'DECRYPT_AND_ENCRYPT';
@@ -10,28 +11,6 @@ var PURPOSE_ENCRYPT = 'ENCRYPT';
 var STATUS_PRIMARY = 'PRIMARY';
 
 var RSA_DEFAULT_BITS = 4096;
-
-var VERSION_BYTE = '\x00';
-
-// Unpacks Keyczar's output format
-function _unpackOutput(encoded) {
-    messageBytes = keyczar_util.decodeBase64Url(encoded);
-    if (messageBytes.charAt(0) != VERSION_BYTE) {
-        throw new Error('Unsupported version byte: ' + messageBytes.charCodeAt(0));
-    }
-
-    keyhash = messageBytes.substr(1, keyczar_util.KEYHASH_LENGTH);
-    message = messageBytes.substr(1 + keyczar_util.KEYHASH_LENGTH);
-    return {keyhash: keyhash, message: message};
-}
-
-function _packOutput(keyhash, message) {
-    if (keyhash.length != keyczar_util.KEYHASH_LENGTH) {
-        throw new Error('Invalid keyhash length: ' + keyhash.length);
-    }
-
-    return VERSION_BYTE + keyhash + message;
-}
 
 // Returns a new Keyczar key. Note: this is slow for RSA keys.
 // TODO: Support different types. Right now it generates asymmetric RSA keys.
@@ -145,25 +124,20 @@ function _makeKeyczar(data) {
         keyczar.primary = keyczar_util.privateKeyFromKeyczar(primaryKeyString);
     } else if (t == TYPE_RSA_PUBLIC && p == PURPOSE_ENCRYPT) {
         keyczar.primary = keyczar_util.publicKeyFromKeyczar(primaryKeyString);
+    } else if (t == TYPE_AES && p == PURPOSE_DECRYPT_ENCRYPT) {
+        keyczar.primary = keyczar_util.aesFromKeyczar(primaryKeyString);
     } else {
         throw new Error('Unsupported key type/purpose: ' + t + '/' + p);
     }
 
     keyczar.encrypt = function(plaintext) {
-        var ciphertext = keyczar.primary.encrypt(plaintext);
-        outbytes = _packOutput(keyczar.primary.keyhash, ciphertext);
-        return keyczar_util.encodeBase64Url(outbytes);
+        var message = keyczar.primary.encrypt(plaintext);
+        return keyczar_util.encodeBase64Url(message);
     };
 
     keyczar.decrypt = function(message) {
-        message = _unpackOutput(message);
-        if (message.keyhash != keyczar.primary.keyhash) {
-            var primaryHex = forge.util.bytesToHex(keyczar.primary.keyhash);
-            var actualHex = forge.util.bytesToHex(message.keyhash);
-            throw new Error('Mismatched keyhash (primary: ' +
-                primaryHex + ' actual: ' + actualHex + ')');
-        }
-        return keyczar.primary.decrypt(message.message);
+        message = keyczar_util.decodeBase64Url(message);
+        return keyczar.primary.decrypt(message);
     };
 
     // Returns the JSON serialization of this keyczar.
