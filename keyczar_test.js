@@ -82,8 +82,10 @@ function testMakeExportRsa() {
     var options = {
         size: 1024
     };
-    var privateKey = keyczar.create(options);
+    var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, options);
+    assert.equal(keyczar.TYPE_RSA_PRIVATE, privateKey.metadata.type);
     var publicKey = keyczar.exportPublicKey(privateKey);
+    assert.equal(keyczar.TYPE_RSA_PUBLIC, publicKey.metadata.type);
 
     // Test round tripping using the exported key
     var encrypted = publicKey.encrypt(EXAMPLE_MESSAGE);
@@ -107,6 +109,12 @@ function testSymmetric() {
     assert.equal(EXAMPLE_MESSAGE, key.decrypt(encrypted));
     assert.equal(EXAMPLE_MESSAGE, key.decrypt(encrypted2));
     assert.equal(EXAMPLE_MESSAGE, key.decrypt(encrypted3));
+
+    // create a new key
+    key = keyczar.create(keyczar.TYPE_AES);
+    assert.equal(keyczar.TYPE_AES, key.metadata.type);
+    encrypted = key.encrypt(EXAMPLE_MESSAGE);
+    assert.equal(EXAMPLE_MESSAGE, key.decrypt(encrypted));
 }
 
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,

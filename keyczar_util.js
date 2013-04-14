@@ -266,6 +266,10 @@ function aesFromKeyczar(serialized) {
             hmacBytes.length + ' != ' + (obj.hmacKey.size/8));
     }
 
+    return _aesFromBytes(keyBytes, hmacBytes);
+}
+
+function _aesFromBytes(keyBytes, hmacBytes) {
     var aesObject = forge.aes.createEncryptionCipher(keyBytes);
     var mdObject = forge.md.sha1.create();
     var hmacObject = forge.hmac.create();
@@ -356,4 +360,5 @@ module.exports._rsaPublicKeyToKeyczarJson = _rsaPublicKeyToKeyczarJson;
 module.exports.publicKeyFromKeyczar = publicKeyFromKeyczar;
 module.exports.privateKeyFromKeyczar = privateKeyFromKeyczar;
 module.exports._privateKeyToKeyczarObject = _privateKeyToKeyczarObject;
+module.exports._aesFromBytes = _aesFromBytes;
 module.exports.aesFromKeyczar = aesFromKeyczar;

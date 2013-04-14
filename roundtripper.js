@@ -12,10 +12,28 @@ function writeFile(path, contents) {
     return fs.writeFileSync(path, contents, {encoding: 'utf-8'});
 }
 
-function decrypt(dirpath, encryptedPath) {
-    var privateKey = keyczar.fromJson(readFile(dirpath + '/privatekey.json'));
-    var encrypted = readFile(dirpath + '/publickey_encrypted');
-    return privateKey.decrypt(encrypted);
+function encrypt(keyPath, message, outputPath) {
+    var key = keyczar.fromJson(readFile(keyPath));
+    var encrypted = key.encrypt(message);
+    writeFile(outputPath, encrypted);
+}
+
+function decrypt(keyPath, encryptedPath, expectedMessage, expectedType) {
+    var key = keyczar.fromJson(readFile(keyPath));
+    if (key.metadata.type != expectedType) {
+        throw new Error('Unexpected key type: ' + key.metadata.type);
+    }
+    var encrypted = readFile(encryptedPath);
+    var decrypted = key.decrypt(encrypted);
+    if (expectedMessage !== null) {
+        if (decrypted != expectedMessage) {
+            process.stderr.write(encryptedPath + ' did not decrypt correctly\n');
+            process.exit(1);
+        } else {
+            console.log(encryptedPath + ' decrypts successfully');
+        }
+    }
+    return decrypted;
 }
 
 if (process.argv.length != 4 && process.argv.length != 5) {
@@ -32,31 +50,32 @@ if (process.argv.length == 5) {
 
 if (mode == 'encrypt') {
     console.log('generating private key ...');
-    var privateKey = keyczar.create();
+    var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE);
     writeFile(dirpath + '/privatekey.json', privateKey.toJson());
 
     var publicKey = keyczar.exportPublicKey(privateKey);
     writeFile(dirpath + '/publickey.json', publicKey.toJson());
 
     console.log('encrypting message length', message.length);
-    var encrypted = publicKey.encrypt(message);
-    writeFile(dirpath + '/publickey_encrypted', encrypted);
+    encrypt(dirpath + '/publickey.json', message, dirpath + '/publickey_encrypted');
+
+    console.log('generating AES key ...');
+    var symmetric = keyczar.create(keyczar.TYPE_AES);
+    writeFile(dirpath + '/symmetric.json', symmetric.toJson());
+    encrypt(dirpath + '/symmetric.json', message, dirpath + '/symmetric_encrypted');
 } else if (mode == 'decrypt') {
-    var reencryptedPath = dirpath + '/publickey_reencrypted';
-    var decrypted = decrypt(dirpath, reencryptedPath);
-    if (decrypted != message) {
-        process.stderr.write(reencryptedPath + ' did not decrypt correctly\n');
-        process.exit(1);
-    } else {
-        console.log(reencryptedPath + ' decrypts successfully');
-    }
+    console.log('asymmetric:');
+    decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_reencrypted', message, keyczar.TYPE_RSA_PRIVATE);
+    console.log('symmetric:');
+    decrypt(dirpath + '/symmetric.json', dirpath + '/symmetric_reencrypted', message, keyczar.TYPE_AES);
 } else if (mode == 'roundtrip') {
-    var decrypted = decrypt(dirpath, dirpath + '/publickey_encrypted');
-    var publicKey = keyczar.fromJson(readFile(dirpath + '/publickey.json'));
-    var reencrypted = publicKey.encrypt(decrypted);
-    var reencrypted_path = dirpath + '/publickey_reencrypted';
-    fs.writeFileSync(reencrypted_path, reencrypted, {encoding: 'utf-8'});
-    console.log('JS re-encrypted to', reencrypted_path);
+    var decrypted = decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_encrypted', null, keyczar.TYPE_RSA_PRIVATE);
+    encrypt(dirpath + '/publickey.json', decrypted, dirpath + '/publickey_reencrypted');
+
+    decrypted = decrypt(dirpath + '/symmetric.json', dirpath + '/symmetric_encrypted', null, keyczar.TYPE_AES);
+    encrypt(dirpath + '/symmetric.json', decrypted, dirpath + '/symmetric_reencrypted');
+
+    console.log('JS re-encrypted to', dirpath);
 } else {
     process.stderr.write('mode must be encrypt, decrypt, or roundtrip\n');
     process.exit(1);

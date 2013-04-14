@@ -11,11 +11,13 @@ var PURPOSE_ENCRYPT = 'ENCRYPT';
 var STATUS_PRIMARY = 'PRIMARY';
 
 var RSA_DEFAULT_BITS = 4096;
+var AES_DEFAULT_BITS = 128;
+var HMAC_DEFAULT_BITS = 256;
 
 // Returns a new Keyczar key. Note: this is slow for RSA keys.
 // TODO: Support different types. Right now it generates asymmetric RSA keys.
 // TODO: Possibly generate the key in steps to avoid hanging a browser?
-function create(options) {
+function create(type, options) {
     if (!options) {
         options = {};
     }
@@ -27,15 +29,26 @@ function create(options) {
         options.name = '';
     }
 
-    var generator = forge.pki.rsa.createKeyPairGenerationState(options.size);
-    // run until done
-    forge.pki.rsa.stepKeyPairGenerationState(generator, 0);
+    var keyString = null;
+    if (type == TYPE_RSA_PRIVATE) {
+        var generator = forge.pki.rsa.createKeyPairGenerationState(options.size);
+        // run until done
+        forge.pki.rsa.stepKeyPairGenerationState(generator, 0);
+        keyString = keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey);
+    } else if (type == TYPE_AES) {
+        // generate random bytes for both AES and HMAC
+        var keyBytes = forge.random.getBytes(AES_DEFAULT_BITS/8);
+        var hmacBytes = forge.random.getBytes(HMAC_DEFAULT_BITS/8);
+        keyString = keyczar_util._aesFromBytes(keyBytes, hmacBytes).toJson();
+    } else {
+        throw new Error('Unsupported key type: ' + type);
+    }
 
     // Create the initial metadata
     var metadata = {
         name: options.name,
         purpose: PURPOSE_DECRYPT_ENCRYPT,
-        type: TYPE_RSA_PRIVATE,
+        type: type,
         encrypted: false,
         versions: [{
             exportable: false,
@@ -47,7 +60,7 @@ function create(options) {
     // TODO: This serializes/deserializes the keys; change _makeKeyczar to not parse strings?
     var data = {
         meta: JSON.stringify(metadata),
-        "1": keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey)
+        "1": keyString
     };
 
     return _makeKeyczar(data);
@@ -157,6 +170,9 @@ function _makeKeyczar(data) {
     return keyczar;
 }
 
+module.exports.TYPE_RSA_PRIVATE = TYPE_RSA_PRIVATE;
+module.exports.TYPE_RSA_PUBLIC = TYPE_RSA_PUBLIC;
+module.exports.TYPE_AES = TYPE_AES;
 module.exports.create = create;
 module.exports.fromJson = fromJson;
 module.exports.exportPublicKey = exportPublicKey;
