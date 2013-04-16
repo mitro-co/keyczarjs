@@ -53,7 +53,7 @@ if (mode == 'encrypt') {
     var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE);
     writeFile(dirpath + '/privatekey.json', privateKey.toJson());
 
-    var publicKey = keyczar.exportPublicKey(privateKey);
+    var publicKey = privateKey.exportPublicKey();
     writeFile(dirpath + '/publickey.json', publicKey.toJson());
 
     console.log('encrypting message length', message.length);
