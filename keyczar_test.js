@@ -99,7 +99,7 @@ function testSymmetric() {
     assert.equal(EXAMPLE_MESSAGE, decrypted);
 
     var encrypted2 = key.encrypt(EXAMPLE_MESSAGE);
-    decrypted = key.decrypt(encrypted);
+    decrypted = key.decrypt(encrypted2);
     assert(encrypted2 != encrypted);
     assert.equal(EXAMPLE_MESSAGE, decrypted);
 
