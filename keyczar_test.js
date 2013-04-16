@@ -8,15 +8,15 @@ function readTestData(name) {
     return fs.readFileSync('testdata/' + name, {encoding: 'utf-8'});
 }
 
-function loadPrivateKey() {
-    return keyczar.fromJson(readTestData('privatekey.json'));
+function readKey(name) {
+    return keyczar.fromJson(readTestData(name));
 }
 
 // the message as written by Java Keyczar
 var EXAMPLE_MESSAGE = 'hello world message';
 
 function testKeyczarRsa() {
-    var privatekey = loadPrivateKey();
+    var privatekey = readKey('privatekey.json');
     var encrypted = readTestData('privatekey_encrypted');
     var decrypted = privatekey.decrypt(encrypted);
     assert.equal(EXAMPLE_MESSAGE, decrypted);
@@ -28,8 +28,8 @@ function testKeyczarRsa() {
     assert.equal(EXAMPLE_MESSAGE, decrypted);
 
     // round trip the message using the public key
-    var publickey = keyczar.fromJson(readTestData('publickey.json'));
-    encrypted3 = privatekey.encrypt(EXAMPLE_MESSAGE);
+    var publickey = readKey('publickey.json');
+    encrypted3 = publickey.encrypt(EXAMPLE_MESSAGE);
     // there is a very small probability these will be the same; if the same seed is generated
     assert(encrypted3 != encrypted);
     assert(encrypted3 != encrypted2);
@@ -45,13 +45,13 @@ function testEncryptAllBytes() {
     }
     assert.equal(256, message.length);
 
-    var privateKey = loadPrivateKey();
+    var privateKey = readKey('privatekey.json');
     assert.equal(message, privateKey.decrypt(privateKey.encrypt(message)));
 }
 
 function testSerializeKeys() {
     // round trip the keys to/from JSON
-    var privateKey = loadPrivateKey();
+    var privateKey = readKey('privatekey.json');
     var publicKey = privateKey.exportPublicKey();
 
     var json = publicKey.toJson();
@@ -62,7 +62,7 @@ function testSerializeKeys() {
 }
 
 function testMaxLengthData() {
-    var privateKey = loadPrivateKey();
+    var privateKey = readKey('privatekey.json');
 
     // Round trip maximum length data
     var maxEncryptLength = Math.ceil(privateKey.primary.size / 8) - 2 * 20 - 2;
@@ -93,7 +93,7 @@ function testMakeExportRsa() {
 }
 
 function testSymmetric() {
-    var key = keyczar.fromJson(readTestData('symmetric.json'));
+    var key = readKey('symmetric.json');
     var encrypted = readTestData('symmetric_encrypted');
     var decrypted = key.decrypt(encrypted);
     assert.equal(EXAMPLE_MESSAGE, decrypted);
