@@ -9,6 +9,9 @@ Implemented using primitives from Forge (https://github.com/digitalbazaar/forge/
 Example use
 -----------
 
+```javascript
+var keyczar = require('./keyczar');
+
 // Create a new keyset and serialize it
 var keyset = keyczar.create(keyczar.TYPE_AES);
 var keysetSerialized = keyset.toJson();
@@ -22,6 +25,33 @@ console.log('plaintext:', plaintext);
 console.log('encrypted:', encrypted);
 console.log('decrypted:', decrypted);
 
+// Create an asymmetric key
+var private = keyczar.create(keyczar.TYPE_RSA_PRIVATE);
+var public = private.exportPublicKey();
+var privateSerialized = private.toJson();
+
+// encrypt some data in a "session" to avoid asymmetric length limits
+var session = keyczar.createSessionCrypter(public);
+encrypted = session.encrypt(plaintext);
+var sessionMaterial = session.sessionMaterial;
+
+// on the receiver, take the private key, the session material and decrypt the data
+private = keyczar.fromJson(privateSerialized);
+session = keyczar.createSessionCrypter(private, sessionMaterial);
+decrypted = session.decrypt(encrypted);
+console.log('plaintext:', plaintext);
+console.log('sessionMaterial:', sessionMaterial);
+console.log('encrypted:', encrypted);
+console.log('decrypted:', decrypted);
+
+// convenience method to pack session material together with the message
+encrypted = keyczar.encryptWithSession(public, plaintext);
+decrypted = keyczar.decryptWithSession(private, encrypted);
+console.log('plaintext:', plaintext);
+console.log('encrypted:', encrypted);
+console.log('decrypted:', decrypted);
+```
+
 
 Differences
 -----------
@@ -30,10 +60,10 @@ Differences
   Keyczar's directories, just as a JSON object.
 
 
-Changes to Java Keyczar
------------------------
+Additions to Java Keyczar
+-------------------------
 
-In order to use Keyczar JS with Java Keyczar, we wrote some additional support
+To use Keyczar JS with Java Keyczar, we wrote some additional support
 classes. Ideally we would like to push some changes upstream:
 
 * Creating a new keyset without writing it to disk, and adding a key to it.
