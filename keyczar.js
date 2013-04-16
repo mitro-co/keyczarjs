@@ -144,13 +144,22 @@ function _makeKeyczar(data) {
         throw new Error('Unsupported key type/purpose: ' + t + '/' + p);
     }
 
-    keyczar.encrypt = function(plaintext) {
+    keyczar.encrypt = function(plaintext, encoder) {
+        if (!encoder && encoder !== null) {
+            encoder = keyczar_util.encodeBase64Url;
+        }
+
         var message = keyczar.primary.encrypt(plaintext);
-        return keyczar_util.encodeBase64Url(message);
+        if (encoder !== null) message = encoder(message);
+        return message;
     };
 
-    keyczar.decrypt = function(message) {
-        message = keyczar_util.decodeBase64Url(message);
+    keyczar.decrypt = function(message, decoder) {
+        if (!decoder && decoder !== null) {
+            decoder = keyczar_util.decodeBase64Url;
+        }
+
+        if (decoder !== null) message = decoder(message);
         return keyczar.primary.decrypt(message);
     };
 

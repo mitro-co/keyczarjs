@@ -117,5 +117,14 @@ function testSymmetric() {
     assert.equal(EXAMPLE_MESSAGE, key.decrypt(encrypted));
 }
 
+function testRaw() {
+    var key = readKey('symmetric.json');
+    // not base64 encoded
+    var encrypted = key.encrypt(EXAMPLE_MESSAGE, null);
+    assert.equal(0x00, encrypted.charCodeAt(0));
+    var decrypted = key.decrypt(encrypted, null);
+    assert.equal(EXAMPLE_MESSAGE, decrypted);
+}
+
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
-    testMakeExportRsa, testSymmetric]);
+    testMakeExportRsa, testSymmetric, testRaw]);
