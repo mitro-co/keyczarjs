@@ -121,6 +121,45 @@ function _decodeBigEndian(byteString) {
     return b1 | b2 | b3 | b4;
 }
 
+// Returns an Array of byte strings from an input byte string.
+// Equivalent to org.keyczar.util.Util.lenPrefixUnpack
+function _unpackByteStrings(bytes) {
+    numByteStrings = _decodeBigEndian(bytes);
+    var index = 4;
+
+    var output = [];
+    for (var i = 0; i < numByteStrings; i++) {
+        var length = _decodeBigEndian(bytes.substring(index));
+        index += 4;
+        output.push(bytes.substring(index, index + length));
+        index += length;
+    }
+
+    // checks if the final string was truncated
+    if (index > bytes.length) {
+        throw new Error('Malformed input: not enough data!');
+    }
+    return output;
+}
+
+// Packs an Array of byte strings into a byte string, length prefixed (32-bit big endian)
+// Equivalent to org.keyczar.util.Util.lenPrefixUnpack
+function _packByteStrings(listOfBytes) {
+    var output = [];
+    // total number of strings
+    output.push(_encodeBigEndian(listOfBytes.length));
+
+    for (var i = 0; i < listOfBytes.length; i++) {
+        // string length
+        output.push(_encodeBigEndian(listOfBytes[i].length));
+        // the string itself
+        // TODO: Check that the string doesn't include out of range values?
+        output.push(listOfBytes[i]);
+    }
+
+    return output.join('');
+}
+
 function _hashBigNumber(md, bigNumber) {
     var bytes = _bnToBytes(bigNumber);
     bytes = _stripLeadingZeros(bytes);
@@ -386,3 +425,5 @@ module.exports._aesFromBytes = _aesFromBytes;
 module.exports.aesFromKeyczar = aesFromKeyczar;
 module.exports._encodeBigEndian = _encodeBigEndian;
 module.exports._decodeBigEndian = _decodeBigEndian;
+module.exports._unpackByteStrings = _unpackByteStrings
+module.exports._packByteStrings = _packByteStrings;

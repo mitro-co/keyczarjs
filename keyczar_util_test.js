@@ -114,4 +114,30 @@ function testBigEndianEncoding() {
     }
 }
 
-test_util.runTests([testBase64Url, testKeyczarConversion, testAesKeyczarConversion, testBigEndianEncoding]);
+function testPackByteStrings() {
+    // test a known value
+    var strings = ['a', 'bc'];
+    var serialized = '\x00\x00\x00\x02\x00\x00\x00\x01a\x00\x00\x00\x02bc';
+    assert.equal(serialized, keyczar_util._packByteStrings(strings));
+    assert.deepEqual(strings, keyczar_util._unpackByteStrings(serialized));
+
+    var roundtrip = function(l) {
+        return keyczar_util._unpackByteStrings(keyczar_util._packByteStrings(l));
+    };
+    strings = [];
+    assert.deepEqual(strings, roundtrip(strings));
+    strings = ['\x00\x00\x00\x00', ''];
+    assert.deepEqual(strings, roundtrip(strings));
+
+    // test some errors
+    assert.throws(function() {keyczar_util._unpackByteStrings('\x00\x00\x00\x02\x00\x00\x00\x01a\x00\x00\x00\x02b');});
+    assert.throws(function() {keyczar_util._unpackByteStrings('\x00\x00\x00\x02\x00\x00\x00\x01a');});
+    assert.throws(function() {keyczar_util._unpackByteStrings('\x00\x00\x00\x02\x00\x00');});
+    assert.throws(function() {keyczar_util._unpackByteStrings('\x00\x00\x00');});
+    assert.throws(function() {keyczar_util._packByteStrings([null]);});
+    assert.throws(function() {keyczar_util._packByteStrings([undefined]);});
+    assert.throws(function() {keyczar_util._packByteStrings([5]);});
+}
+
+test_util.runTests([testBase64Url, testKeyczarConversion, testAesKeyczarConversion,
+    testBigEndianEncoding, testPackByteStrings]);
