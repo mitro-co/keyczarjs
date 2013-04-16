@@ -43,7 +43,7 @@ function create(type, options) {
     if (type == TYPE_RSA_PRIVATE) {
         if (!size) size = RSA_DEFAULT_BITS;
 
-        var generator = forge.pki.rsa.createKeyPairGenerationState(options.size);
+        var generator = forge.pki.rsa.createKeyPairGenerationState(size);
         // run until done
         forge.pki.rsa.stepKeyPairGenerationState(generator, 0);
         keyString = keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey);
