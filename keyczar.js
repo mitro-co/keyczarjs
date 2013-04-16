@@ -14,6 +14,15 @@ var RSA_DEFAULT_BITS = 4096;
 var AES_DEFAULT_BITS = 128;
 var HMAC_DEFAULT_BITS = 256;
 
+function _generateAes(size) {
+    if (!size) size = AES_DEFAULT_BITS;
+
+    // generate random bytes for both AES and HMAC
+    var keyBytes = forge.random.getBytes(size/8);
+    var hmacBytes = forge.random.getBytes(HMAC_DEFAULT_BITS/8);
+    return keyczar_util._aesFromBytes(keyBytes, hmacBytes);
+}
+
 // Returns a new Keyczar key. Note: this is slow for RSA keys.
 // TODO: Support different types. Right now it generates asymmetric RSA keys.
 // TODO: Possibly generate the key in steps to avoid hanging a browser?
@@ -23,23 +32,23 @@ function create(type, options) {
     }
     // TODO: Enforce a list of acceptable sizes
     if (!options.size) {
-        options.size = RSA_DEFAULT_BITS;
+        options.size = null;
     }
     if (!options.name) {
         options.name = '';
     }
 
     var keyString = null;
+    var size = options.size;
     if (type == TYPE_RSA_PRIVATE) {
+        if (!size) size = RSA_DEFAULT_BITS;
+
         var generator = forge.pki.rsa.createKeyPairGenerationState(options.size);
         // run until done
         forge.pki.rsa.stepKeyPairGenerationState(generator, 0);
         keyString = keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey);
     } else if (type == TYPE_AES) {
-        // generate random bytes for both AES and HMAC
-        var keyBytes = forge.random.getBytes(AES_DEFAULT_BITS/8);
-        var hmacBytes = forge.random.getBytes(HMAC_DEFAULT_BITS/8);
-        keyString = keyczar_util._aesFromBytes(keyBytes, hmacBytes).toJson();
+        keyString = _generateAes(size).toJson();
     } else {
         throw new Error('Unsupported key type: ' + type);
     }
@@ -180,8 +189,77 @@ function _makeKeyczar(data) {
     return keyczar;
 }
 
+function createSessionCrypter(key, sessionMaterial) {
+    if (key.metadata.type != TYPE_RSA_PRIVATE && key.metadata.type != TYPE_RSA_PUBLIC) {
+        throw new Error('Invalid key type for SessionCrypter: ' + key.metadata.type);
+    }
+
+    var sessionKey = null;
+    var rawSessionMaterial = null;
+    if (sessionMaterial) {
+        // decrypt session key: not base64 encoded if leading byte is VERSION_BYTE
+        if (sessionMaterial.charAt(0) == keyczar_util.VERSION_BYTE) {
+            rawSessionMaterial = sessionMaterial;
+        } else {
+            rawSessionMaterial = keyczar_util.decodeBase64Url(sessionMaterial);
+        }
+        var decrypted = key.decrypt(rawSessionMaterial, null);
+        var keyBytes = keyczar_util._unpackByteStrings(decrypted);
+
+        sessionKey = keyczar_util._aesFromBytes(keyBytes[0], keyBytes[1]);
+    } else {
+        // generate the session key
+        sessionKey = _generateAes();
+
+        // encrypt the key
+        var packed = sessionKey.pack();
+        rawSessionMaterial = key.encrypt(packed, null);
+    }
+
+    var crypter = {
+        rawSessionMaterial: rawSessionMaterial,
+        sessionMaterial: keyczar_util.encodeBase64Url(rawSessionMaterial)
+    };
+
+    crypter.encrypt = function(plaintext, encoder) {
+        var ciphertext = sessionKey.encrypt(plaintext);
+
+        // TODO: Call non-null, non-undefined encoder()
+        if (encoder !== null) ciphertext = keyczar_util.encodeBase64Url(ciphertext);
+        return ciphertext;
+    };
+
+    crypter.decrypt = function(message, decoder) {
+        // TODO: Call non-null, non-undefined decoder()
+        if (decoder !== null) message = keyczar_util.decodeBase64Url(message);
+        return sessionKey.decrypt(message);
+    };
+
+    sessionKey.sessionMaterial = sessionMaterial;
+    return crypter;
+}
+
+// Returns a byte string containing (session material, session encryption).
+// Convenience wrapper around a SessionCrypter.
+function encryptWithSession(key, message) {
+    var crypter = createSessionCrypter(key);
+    var rawEncrypted = crypter.encrypt(message, null);
+    var packed = keyczar_util._packByteStrings([crypter.rawSessionMaterial, rawEncrypted]);
+    return keyczar_util.encodeBase64Url(packed);
+}
+
+function decryptWithSession(key, message) {
+    message = keyczar_util.decodeBase64Url(message);
+    var unpacked = keyczar_util._unpackByteStrings(message);
+    var crypter = createSessionCrypter(key, unpacked[0]);
+    return crypter.decrypt(unpacked[1], null);
+}
+
 module.exports.TYPE_RSA_PRIVATE = TYPE_RSA_PRIVATE;
 module.exports.TYPE_RSA_PUBLIC = TYPE_RSA_PUBLIC;
 module.exports.TYPE_AES = TYPE_AES;
 module.exports.create = create;
 module.exports.fromJson = fromJson;
+module.exports.createSessionCrypter = createSessionCrypter;
+module.exports.encryptWithSession = encryptWithSession;
+module.exports.decryptWithSession = decryptWithSession;

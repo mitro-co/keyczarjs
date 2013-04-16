@@ -408,10 +408,17 @@ function _aesFromBytes(keyBytes, hmacBytes) {
         return JSON.stringify(data);
     };
 
+    // Returns a byte string containing the key/hmac bytes, using _packByteStrings.
+    // Used by keyczar.createSessionCrypter().
+    key.pack = function() {
+        return _packByteStrings([keyBytes, hmacBytes]);
+    };
+
     return key;
 }
 
 module.exports.KEYHASH_LENGTH = KEYHASH_LENGTH;
+module.exports.VERSION_BYTE = VERSION_BYTE;
 module.exports._bnToBytes = _bnToBytes;
 module.exports._base64ToBn = _base64ToBn;
 module.exports.decodeBase64Url = decodeBase64Url;
@@ -425,5 +432,5 @@ module.exports._aesFromBytes = _aesFromBytes;
 module.exports.aesFromKeyczar = aesFromKeyczar;
 module.exports._encodeBigEndian = _encodeBigEndian;
 module.exports._decodeBigEndian = _decodeBigEndian;
-module.exports._unpackByteStrings = _unpackByteStrings
+module.exports._unpackByteStrings = _unpackByteStrings;
 module.exports._packByteStrings = _packByteStrings;

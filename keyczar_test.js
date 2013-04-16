@@ -126,5 +126,24 @@ function testRaw() {
     assert.equal(EXAMPLE_MESSAGE, decrypted);
 }
 
+function testSession() {
+    var publickey = readKey('publickey.json');
+    var session = keyczar.createSessionCrypter(publickey);
+    var ciphertext = session.encrypt(EXAMPLE_MESSAGE);
+    var material = session.sessionMaterial;
+
+    var privatekey = readKey('privatekey.json');
+    session = keyczar.createSessionCrypter(privatekey, material);
+    assert.equal(EXAMPLE_MESSAGE, session.decrypt(ciphertext));
+
+    var longMessage = 'long message ';
+    for (var i = 0; i < 6; i++) {
+        longMessage += longMessage;
+    }
+    assert(longMessage.length > 500);
+    ciphertext = keyczar.encryptWithSession(publickey, longMessage);
+    assert.equal(longMessage, keyczar.decryptWithSession(privatekey, ciphertext));
+}
+
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
-    testMakeExportRsa, testSymmetric, testRaw]);
+    testMakeExportRsa, testSymmetric, testRaw, testSession]);
