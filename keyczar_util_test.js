@@ -83,4 +83,35 @@ function testAesKeyczarConversion() {
     assert.equal(message, aes.decrypt(ciphertext2));
 }
 
-test_util.runTests([testBase64Url, testKeyczarConversion, testAesKeyczarConversion]);
+function testBigEndianEncoding() {
+    // round trip a random value
+    assert.equal('\x00\x00\x00\x01', keyczar_util._encodeBigEndian(1));
+    assert.equal('\x0c\xa8\xae\x3e', keyczar_util._encodeBigEndian(212381246));
+    assert.equal(212381246, keyczar_util._decodeBigEndian('\x0c\xa8\xae\x3e'));
+
+    // check limits
+    assert.throws(function() {keyczar_util._encodeBigEndian(-1);});
+    assert.throws(function() {keyczar_util._encodeBigEndian(2147483648);});
+    assert.throws(function() {keyczar_util._decodeBigEndian('\x80\x00\x00\x00');});
+    assert.throws(function() {keyczar_util._decodeBigEndian('\x00\x00\x00');});
+
+    var assertRoundtrip = function(i) {
+        var encoded = keyczar_util._encodeBigEndian(i);
+        assert.equal(4, encoded.length);
+        var roundtrip = keyczar_util._decodeBigEndian(encoded);
+        assert.equal(i, roundtrip);
+    };
+
+    // round trip small integers
+    for (var i = 0; i < 260; i++) {
+        assertRoundtrip(i);
+    }
+
+    // round trip big integers
+    var max = 2147483647;
+    for (i = max - 260; i <= max; i++) {
+        assertRoundtrip(i);
+    }
+}
+
+test_util.runTests([testBase64Url, testKeyczarConversion, testAesKeyczarConversion, testBigEndianEncoding]);

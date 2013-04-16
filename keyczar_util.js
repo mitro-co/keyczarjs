@@ -92,11 +92,33 @@ function _stripLeadingZeros(bytes) {
 }
 
 function _encodeBigEndian(number) {
-    b1 = String.fromCharCode((number >> 24) & 0xff);
-    b2 = String.fromCharCode((number >> 16) & 0xff);
-    b3 = String.fromCharCode((number >> 8) & 0xff);
-    b4 = String.fromCharCode(number & 0xff);
+    if (!(0 <= number && number <= 2147483647)) {
+        throw new Error('number is out of range: ' + number);
+    }
+    if ((number & 0xffffffff) != number) {
+        throw new Error('number is not a 32-bit integer? ' + number);
+    }
+    var b1 = String.fromCharCode((number >> 24) & 0xff);
+    var b2 = String.fromCharCode((number >> 16) & 0xff);
+    var b3 = String.fromCharCode((number >> 8) & 0xff);
+    var b4 = String.fromCharCode(number & 0xff);
     return b1 + b2 + b3 + b4;
+}
+
+function _decodeBigEndian(byteString) {
+    if (byteString.length < 4) {
+        throw new Error('byteString too short: ' + byteString.length);
+    }
+    var firstByte = byteString.charCodeAt(0);
+    if (firstByte & 0x80) {
+        throw new Error('Cannot decode negative number; initial byte = ' + firstByte.toString(16));
+    }
+
+    var b1 = firstByte << 24;
+    var b2 = byteString.charCodeAt(1) << 16;
+    var b3 = byteString.charCodeAt(2) << 8;
+    var b4 = byteString.charCodeAt(3);
+    return b1 | b2 | b3 | b4;
 }
 
 function _hashBigNumber(md, bigNumber) {
@@ -362,3 +384,5 @@ module.exports.privateKeyFromKeyczar = privateKeyFromKeyczar;
 module.exports._privateKeyToKeyczarObject = _privateKeyToKeyczarObject;
 module.exports._aesFromBytes = _aesFromBytes;
 module.exports.aesFromKeyczar = aesFromKeyczar;
+module.exports._encodeBigEndian = _encodeBigEndian;
+module.exports._decodeBigEndian = _decodeBigEndian;
