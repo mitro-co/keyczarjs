@@ -52,7 +52,7 @@ function testEncryptAllBytes() {
 function testSerializeKeys() {
     // round trip the keys to/from JSON
     var privateKey = loadPrivateKey();
-    var publicKey = keyczar.exportPublicKey(privateKey);
+    var publicKey = privateKey.exportPublicKey();
 
     var json = publicKey.toJson();
     serializedKey = keyczar.fromJson(json);
@@ -84,7 +84,7 @@ function testMakeExportRsa() {
     };
     var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, options);
     assert.equal(keyczar.TYPE_RSA_PRIVATE, privateKey.metadata.type);
-    var publicKey = keyczar.exportPublicKey(privateKey);
+    var publicKey = privateKey.exportPublicKey();
     assert.equal(keyczar.TYPE_RSA_PUBLIC, publicKey.metadata.type);
 
     // Test round tripping using the exported key

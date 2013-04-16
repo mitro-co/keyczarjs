@@ -67,7 +67,7 @@ function create(type, options) {
 }
 
 // Return a new keyczar containing the public part of key, which must be an asymmetric key.
-function exportPublicKey(key) {
+function _exportPublicKey(key) {
     if (key.metadata.type != TYPE_RSA_PRIVATE && key.metadata.purpose != PURPOSE_DECRYPT_ENCRYPT) {
         throw new Error('Unsupported key type/purpose:' +
             key.metadata.type + '/' + key.metadata.purpose);
@@ -135,6 +135,7 @@ function _makeKeyczar(data) {
     var primaryKeyString = data[String(primaryVersion)];
     if (t == TYPE_RSA_PRIVATE && p == PURPOSE_DECRYPT_ENCRYPT) {
         keyczar.primary = keyczar_util.privateKeyFromKeyczar(primaryKeyString);
+        keyczar.exportPublicKey = function() { return _exportPublicKey(keyczar); };
     } else if (t == TYPE_RSA_PUBLIC && p == PURPOSE_ENCRYPT) {
         keyczar.primary = keyczar_util.publicKeyFromKeyczar(primaryKeyString);
     } else if (t == TYPE_AES && p == PURPOSE_DECRYPT_ENCRYPT) {
@@ -175,4 +176,3 @@ module.exports.TYPE_RSA_PUBLIC = TYPE_RSA_PUBLIC;
 module.exports.TYPE_AES = TYPE_AES;
 module.exports.create = create;
 module.exports.fromJson = fromJson;
-module.exports.exportPublicKey = exportPublicKey;
