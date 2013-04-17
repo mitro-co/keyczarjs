@@ -36,6 +36,30 @@ function decrypt(keyPath, encryptedPath, expectedMessage, expectedType) {
     return decrypted;
 }
 
+function makeLonger(input) {
+    while (input.length < 1000) {
+        input += input;
+    }
+    return input;
+}
+
+function encryptSession(keyPath, message, outputPath) {
+    var key = keyczar.fromJson(readFile(keyPath));
+    var encrypted = keyczar.encryptWithSession(key, message);
+    writeFile(outputPath, encrypted);
+}
+
+function decryptSession(keyPath, encryptedPath, expectedMessage) {
+    var key = keyczar.fromJson(readFile(keyPath));
+    var encrypted = readFile(encryptedPath);
+    var decrypted = keyczar.decryptWithSession(key, encrypted);
+    if (expectedMessage !== null && decrypted != expectedMessage) {
+        process.stderr.write(encryptedPath + ' did not decrypt correctly\n');
+        process.exit(1);
+    }
+    return decrypted;
+}
+
 if (process.argv.length != 4 && process.argv.length != 5) {
     process.stderr.write('node roundtripper.js (mode) (in/out directory) [message to en/decrypt]\n');
     process.exit(1);
@@ -63,17 +87,24 @@ if (mode == 'encrypt') {
     var symmetric = keyczar.create(keyczar.TYPE_AES);
     writeFile(dirpath + '/symmetric.json', symmetric.toJson());
     encrypt(dirpath + '/symmetric.json', message, dirpath + '/symmetric_encrypted');
+
+    encryptSession(dirpath + '/publickey.json', makeLonger(message), dirpath + '/publickey_session');
 } else if (mode == 'decrypt') {
     console.log('asymmetric:');
     decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_reencrypted', message, keyczar.TYPE_RSA_PRIVATE);
     console.log('symmetric:');
     decrypt(dirpath + '/symmetric.json', dirpath + '/symmetric_reencrypted', message, keyczar.TYPE_AES);
+
+    decryptSession(dirpath + '/privatekey.json', dirpath + '/publickey_session_reencrypted', makeLonger(message));
 } else if (mode == 'roundtrip') {
     var decrypted = decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_encrypted', null, keyczar.TYPE_RSA_PRIVATE);
     encrypt(dirpath + '/publickey.json', decrypted, dirpath + '/publickey_reencrypted');
 
     decrypted = decrypt(dirpath + '/symmetric.json', dirpath + '/symmetric_encrypted', null, keyczar.TYPE_AES);
     encrypt(dirpath + '/symmetric.json', decrypted, dirpath + '/symmetric_reencrypted');
+
+    decrypted = decryptSession(dirpath + '/privatekey.json', dirpath + '/publickey_session', null);
+    encryptSession(dirpath + '/publickey.json', decrypted, dirpath + '/publickey_session_reencrypted');
 
     console.log('JS re-encrypted to', dirpath);
 } else {
