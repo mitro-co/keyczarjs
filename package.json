@@ -1,0 +1,26 @@
+{
+  "name": "keyczarjs",
+  "version": "0.1.0",
+  "author": "Mitro <inbound@mitro.co>",
+  "description": "Partial JavaScript implementation of Google's Keyczar",
+  "scripts": {
+    "test": "./runtests.sh"
+  },
+  "main": "keyczar.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mitro-co/keyczarjs.git"
+  },
+  "keywords": [
+    "crypto",
+    "cryptography",
+    "rsa",
+    "aes",
+    "pki"
+  ],
+  "dependencies" : {
+    "node-forge": "git://github.com/digitalbazaar/forge.git"
+  },
+  "private": true,
+  "license": "BSD"
+}
