@@ -1,6 +1,5 @@
 var assert = require('assert');
-
-var forge = require('forge');
+var forge = require('node-forge');
 
 var rsa_oaep = require('./rsa_oaep');
 var keyczar_util = require('./keyczar_util');

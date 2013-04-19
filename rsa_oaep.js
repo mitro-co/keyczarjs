@@ -20,7 +20,7 @@ else if(typeof(module) !== 'undefined' && module.exports) {
     keyczar = {};
     module.exports = keyczar.rsa_oaep = {};
     // forge must be global and loaded before any functions here are called
-    forge = require('forge');
+    forge = require('node-forge');
 }
 var rsa_oaep = keyczar.rsa_oaep;
 

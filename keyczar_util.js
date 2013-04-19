@@ -15,7 +15,7 @@ else if(typeof(module) !== 'undefined' && module.exports) {
     };
     module.exports = keyczar.keyczar_util = {};
     // forge must be global and loaded before any functions here are called
-    forge = require('forge');
+    forge = require('node-forge');
 }
 var keyczar_util = keyczar.keyczar_util;
 

@@ -1,5 +1,5 @@
 var assert = require('assert');
-var forge = require('forge');
+var forge = require('node-forge');
 
 var keyczar_util = require('./keyczar_util');
 var test_util = require('./test_util');
