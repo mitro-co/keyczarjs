@@ -6,8 +6,8 @@ A partial Javascript implementation of Google Keyczar (http://www.keyczar.org/)
 Implemented using primitives from Forge (https://github.com/digitalbazaar/forge/)
 
 
-Example use
------------
+Example use (Node)
+------------------
 
 ```javascript
 var keyczar = require('./keyczar');
@@ -35,7 +35,7 @@ var session = keyczar.createSessionCrypter(public);
 encrypted = session.encrypt(plaintext);
 var sessionMaterial = session.sessionMaterial;
 
-// on the receiver, take the private key, the session material and decrypt the data
+// take the private key and the session material to decrypt the data
 private = keyczar.fromJson(privateSerialized);
 session = keyczar.createSessionCrypter(private, sessionMaterial);
 decrypted = session.decrypt(encrypted);
@@ -51,6 +51,19 @@ console.log('plaintext:', plaintext);
 console.log('encrypted:', encrypted);
 console.log('decrypted:', decrypted);
 ```
+
+
+Using KeyczarJS
+-------------------------
+
+Each script in this package is defined to be usable both by node's require()
+statement and in a browser. In the browser, it creates a global keyczar
+namespace for all the exported functions. In a browser, you must load the
+following script files:
+
+* Forge: rsa.js asn1.js oids.js pki.js jsbn.js util.js sha1.js prng.js aes.js
+  random.js
+* Keyczar: keyczar_util.js aes_oaep.js keyczar.js
 
 
 Differences

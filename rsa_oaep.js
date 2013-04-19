@@ -5,7 +5,24 @@
 // See official documentation:
 // http://www.rsa.com/rsalabs/node.asp?id=2125
 
-var forge = require('forge');
+// Define a module that can be loaded both by node require and a browser
+(function() {
+// define keyczar
+var keyczar = null;
+var forge = null;
+if(typeof(window) !== 'undefined') {
+    keyczar = window.keyczar = window.keyczar || {};
+    keyczar.rsa_oaep = {};
+    forge = window.forge;
+}
+// define node.js module
+else if(typeof(module) !== 'undefined' && module.exports) {
+    keyczar = {};
+    module.exports = keyczar.rsa_oaep = {};
+    // forge must be global and loaded before any functions here are called
+    forge = require('forge');
+}
+var rsa_oaep = keyczar.rsa_oaep;
 
 // RSAES-OAEP-ENCRYPT message (M), with optional label (L)
 function rsa_oaep_encrypt(key, message, label, seed) {
@@ -144,5 +161,8 @@ function rsa_mgf1(seed, maskLength, hash) {
    return t.substring(0, maskLength);
 }
 
-module.exports.rsa_oaep_encrypt = rsa_oaep_encrypt;
-module.exports.rsa_oaep_decrypt = rsa_oaep_decrypt;
+rsa_oaep.rsa_oaep_encrypt = rsa_oaep_encrypt;
+rsa_oaep.rsa_oaep_decrypt = rsa_oaep_decrypt;
+
+// end module
+})();

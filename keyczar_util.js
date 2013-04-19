@@ -1,6 +1,23 @@
-var forge = require('forge');
-
-var rsa_oaep = require('./rsa_oaep');
+// Define keyczar_util as a module that can be loaded both by node require and a browser
+(function() {
+// define keyczar
+var keyczar = null;
+var forge = null;
+if(typeof(window) !== 'undefined') {
+    keyczar = window.keyczar = window.keyczar || {};
+    keyczar.keyczar_util = {};
+    forge = window.forge;
+}
+// define node.js module
+else if(typeof(module) !== 'undefined' && module.exports) {
+    keyczar = {
+        rsa_oaep: require('./rsa_oaep')
+    };
+    module.exports = keyczar.keyczar_util = {};
+    // forge must be global and loaded before any functions here are called
+    forge = require('forge');
+}
+var keyczar_util = keyczar.keyczar_util;
 
 var KEYHASH_LENGTH = 4;
 var MODE_CBC = 'CBC';
@@ -241,7 +258,7 @@ function _makeRsaKey(rsaKey) {
     };
 
     key.encrypt = function(plaintext) {
-        ciphertext = rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
+        ciphertext = keyczar.rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
         return _packOutput(key.keyhash, ciphertext);
     };
     return key;
@@ -282,7 +299,7 @@ function privateKeyFromKeyczar(serialized) {
     key.decrypt = function(message) {
         message = _unpackOutput(message);
         _checkKeyHash(key.keyhash, message);
-        return rsa_oaep.rsa_oaep_decrypt(rsaKey, message.message);
+        return keyczar.rsa_oaep.rsa_oaep_decrypt(rsaKey, message.message);
     };
 
     /** Returns a JSON string containing the public part of this key. */
@@ -417,20 +434,23 @@ function _aesFromBytes(keyBytes, hmacBytes) {
     return key;
 }
 
-module.exports.KEYHASH_LENGTH = KEYHASH_LENGTH;
-module.exports.VERSION_BYTE = VERSION_BYTE;
-module.exports._bnToBytes = _bnToBytes;
-module.exports._base64ToBn = _base64ToBn;
-module.exports.decodeBase64Url = decodeBase64Url;
-module.exports.encodeBase64Url = encodeBase64Url;
-module.exports._rsaPrivateKeyToKeyczarJson = _rsaPrivateKeyToKeyczarJson;
-module.exports._rsaPublicKeyToKeyczarJson = _rsaPublicKeyToKeyczarJson;
-module.exports.publicKeyFromKeyczar = publicKeyFromKeyczar;
-module.exports.privateKeyFromKeyczar = privateKeyFromKeyczar;
-module.exports._privateKeyToKeyczarObject = _privateKeyToKeyczarObject;
-module.exports._aesFromBytes = _aesFromBytes;
-module.exports.aesFromKeyczar = aesFromKeyczar;
-module.exports._encodeBigEndian = _encodeBigEndian;
-module.exports._decodeBigEndian = _decodeBigEndian;
-module.exports._unpackByteStrings = _unpackByteStrings;
-module.exports._packByteStrings = _packByteStrings;
+keyczar_util.KEYHASH_LENGTH = KEYHASH_LENGTH;
+keyczar_util.VERSION_BYTE = VERSION_BYTE;
+keyczar_util._bnToBytes = _bnToBytes;
+keyczar_util._base64ToBn = _base64ToBn;
+keyczar_util.decodeBase64Url = decodeBase64Url;
+keyczar_util.encodeBase64Url = encodeBase64Url;
+keyczar_util._rsaPrivateKeyToKeyczarJson = _rsaPrivateKeyToKeyczarJson;
+keyczar_util._rsaPublicKeyToKeyczarJson = _rsaPublicKeyToKeyczarJson;
+keyczar_util.publicKeyFromKeyczar = publicKeyFromKeyczar;
+keyczar_util.privateKeyFromKeyczar = privateKeyFromKeyczar;
+keyczar_util._privateKeyToKeyczarObject = _privateKeyToKeyczarObject;
+keyczar_util._aesFromBytes = _aesFromBytes;
+keyczar_util.aesFromKeyczar = aesFromKeyczar;
+keyczar_util._encodeBigEndian = _encodeBigEndian;
+keyczar_util._decodeBigEndian = _decodeBigEndian;
+keyczar_util._unpackByteStrings = _unpackByteStrings;
+keyczar_util._packByteStrings = _packByteStrings;
+
+// end module
+})();

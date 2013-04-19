@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script type="text/javascript" src="node_modules/forge/js/rsa.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/asn1.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/oids.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/pki.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/jsbn.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/util.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/sha1.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/prng.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/aes.js"></script>
+<script type="text/javascript" src="node_modules/forge/js/random.js"></script>
+
+<script type="text/javascript" src="keyczar_util.js"></script>
+<script type="text/javascript" src="rsa_oaep.js"></script>
+<script type="text/javascript" src="keyczar.js"></script>
+</head>
+<body>
+<p>Input message: <span id="input">hello world?</span></p>
+<!-- <p>Input message: <span id="input">Héllo world? 本 Key Emoji: 🔑</span></p> -->
+
+<p>Key generation time (2048-bit RSA): <span id="time"></span> ms</p>
+<p>Encrypted: <span id="encrypted"></span></p>
+<p>Decrypted: <span id="decrypted"></span></p>
+
+<hr>
+<p>Public key: <span id="publickey"></span></p>
+<p>Private key: <span id="privatekey"></span></p>
+
+<script type="text/javascript">
+var outputElement = document.getElementById('output');
+
+// generate a small key to make this fast
+var options = {
+    size: 2048
+};
+var start = new Date();
+var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, options);
+var end = new Date();
+document.getElementById('time').innerText = (end - start).toString();
+document.getElementById('privatekey').innerText = privateKey.toJson();
+document.getElementById('publickey').innerText = privateKey.exportPublicKey().toJson();
+
+var publicKey = keyczar.fromJson(privateKey.exportPublicKey().toJson());
+
+// Test round tripping using the exported key
+var message = document.getElementById('input').innerText;
+console.log(message);
+var encrypted = publicKey.encrypt(message);
+document.getElementById('encrypted').innerText = encrypted;
+
+privateKey = keyczar.fromJson(privateKey.toJson());
+var decrypted = privateKey.decrypt(encrypted);
+document.getElementById('decrypted').innerText = decrypted;
+</script>
+</body>
+</html>

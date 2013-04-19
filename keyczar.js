@@ -1,7 +1,22 @@
-var forge = require('forge');
-
-var keyczar_util = require('./keyczar_util');
-var rsa_oaep = require('./rsa_oaep');
+// Define keyczar as a module that can be loaded both by node require and a browser
+(function() {
+// define keyczar
+var keyczar = null;
+var forge = null;
+if(typeof(window) !== 'undefined') {
+    keyczar = window.keyczar = window.keyczar || {};
+    forge = window.forge;
+}
+// define node.js module
+else if(typeof(module) !== 'undefined' && module.exports) {
+    keyczar = {
+        rsa_oaep: require('./rsa_oaep'),
+        keyczar_util: require('./keyczar_util')
+    };
+    module.exports = keyczar;
+    // forge must be global and loaded before any functions here are called
+    forge = require('forge');
+}
 
 var TYPE_AES = 'AES';
 var TYPE_RSA_PRIVATE = 'RSA_PRIV';
@@ -20,7 +35,7 @@ function _generateAes(size) {
     // generate random bytes for both AES and HMAC
     var keyBytes = forge.random.getBytes(size/8);
     var hmacBytes = forge.random.getBytes(HMAC_DEFAULT_BITS/8);
-    return keyczar_util._aesFromBytes(keyBytes, hmacBytes);
+    return keyczar.keyczar_util._aesFromBytes(keyBytes, hmacBytes);
 }
 
 // Returns a new Keyczar key. Note: this is slow for RSA keys.
@@ -46,7 +61,7 @@ function create(type, options) {
         var generator = forge.pki.rsa.createKeyPairGenerationState(size);
         // run until done
         forge.pki.rsa.stepKeyPairGenerationState(generator, 0);
-        keyString = keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey);
+        keyString = keyczar.keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey);
     } else if (type == TYPE_AES) {
         keyString = _generateAes(size).toJson();
     } else {
@@ -130,63 +145,63 @@ function _getPrimaryVersion(metadata) {
 
 // Returns a Keyczar object from data.
 function _makeKeyczar(data) {
-    var keyczar = {};
+    var instance = {};
 
-    keyczar.metadata = JSON.parse(data.meta);
-    if (keyczar.metadata.encrypted !== false) {
+    instance.metadata = JSON.parse(data.meta);
+    if (instance.metadata.encrypted !== false) {
         throw new Error('Encrypted keys not supported');
     }
 
-    var primaryVersion = _getPrimaryVersion(keyczar.metadata);
+    var primaryVersion = _getPrimaryVersion(instance.metadata);
 
-    var t = keyczar.metadata.type;
-    var p = keyczar.metadata.purpose;
+    var t = instance.metadata.type;
+    var p = instance.metadata.purpose;
     var primaryKeyString = data[String(primaryVersion)];
     if (t == TYPE_RSA_PRIVATE && p == PURPOSE_DECRYPT_ENCRYPT) {
-        keyczar.primary = keyczar_util.privateKeyFromKeyczar(primaryKeyString);
-        keyczar.exportPublicKey = function() { return _exportPublicKey(keyczar); };
+        instance.primary = keyczar.keyczar_util.privateKeyFromKeyczar(primaryKeyString);
+        instance.exportPublicKey = function() { return _exportPublicKey(instance); };
     } else if (t == TYPE_RSA_PUBLIC && p == PURPOSE_ENCRYPT) {
-        keyczar.primary = keyczar_util.publicKeyFromKeyczar(primaryKeyString);
+        instance.primary = keyczar.keyczar_util.publicKeyFromKeyczar(primaryKeyString);
     } else if (t == TYPE_AES && p == PURPOSE_DECRYPT_ENCRYPT) {
-        keyczar.primary = keyczar_util.aesFromKeyczar(primaryKeyString);
+        instance.primary = keyczar.keyczar_util.aesFromKeyczar(primaryKeyString);
     } else {
         throw new Error('Unsupported key type/purpose: ' + t + '/' + p);
     }
 
-    keyczar.encrypt = function(plaintext, encoder) {
+    instance.encrypt = function(plaintext, encoder) {
         if (!encoder && encoder !== null) {
-            encoder = keyczar_util.encodeBase64Url;
+            encoder = keyczar.keyczar_util.encodeBase64Url;
         }
 
-        var message = keyczar.primary.encrypt(plaintext);
+        var message = instance.primary.encrypt(plaintext);
         if (encoder !== null) message = encoder(message);
         return message;
     };
 
-    keyczar.decrypt = function(message, decoder) {
+    instance.decrypt = function(message, decoder) {
         if (!decoder && decoder !== null) {
-            decoder = keyczar_util.decodeBase64Url;
+            decoder = keyczar.keyczar_util.decodeBase64Url;
         }
 
         if (decoder !== null) message = decoder(message);
-        return keyczar.primary.decrypt(message);
+        return instance.primary.decrypt(message);
     };
 
-    // Returns the JSON serialization of this keyczar.
-    keyczar.toJson = function() {
+    // Returns the JSON serialization of this keyczar instance.
+    instance.toJson = function() {
         var out = {};
-        out.meta = JSON.stringify(keyczar.metadata);
+        out.meta = JSON.stringify(instance.metadata);
 
         // TODO: Store and serialize ALL keys. For now this works
-        if (keyczar.metadata.versions.length != 1) {
+        if (instance.metadata.versions.length != 1) {
             throw new Error('TODO: Support keyczars with multiple keys');
         }
-        var primaryVersion = _getPrimaryVersion(keyczar.metadata);
-        out[String(primaryVersion)] = keyczar.primary.toJson();
+        var primaryVersion = _getPrimaryVersion(instance.metadata);
+        out[String(primaryVersion)] = instance.primary.toJson();
         return JSON.stringify(out);
     };
 
-    return keyczar;
+    return instance;
 }
 
 function createSessionCrypter(key, sessionMaterial) {
@@ -198,15 +213,15 @@ function createSessionCrypter(key, sessionMaterial) {
     var rawSessionMaterial = null;
     if (sessionMaterial) {
         // decrypt session key: not base64 encoded if leading byte is VERSION_BYTE
-        if (sessionMaterial.charAt(0) == keyczar_util.VERSION_BYTE) {
+        if (sessionMaterial.charAt(0) == keyczar.keyczar_util.VERSION_BYTE) {
             rawSessionMaterial = sessionMaterial;
         } else {
-            rawSessionMaterial = keyczar_util.decodeBase64Url(sessionMaterial);
+            rawSessionMaterial = keyczar.keyczar_util.decodeBase64Url(sessionMaterial);
         }
         var decrypted = key.decrypt(rawSessionMaterial, null);
-        var keyBytes = keyczar_util._unpackByteStrings(decrypted);
+        var keyBytes = keyczar.keyczar_util._unpackByteStrings(decrypted);
 
-        sessionKey = keyczar_util._aesFromBytes(keyBytes[0], keyBytes[1]);
+        sessionKey = keyczar.keyczar_util._aesFromBytes(keyBytes[0], keyBytes[1]);
     } else {
         // generate the session key
         sessionKey = _generateAes();
@@ -218,20 +233,20 @@ function createSessionCrypter(key, sessionMaterial) {
 
     var crypter = {
         rawSessionMaterial: rawSessionMaterial,
-        sessionMaterial: keyczar_util.encodeBase64Url(rawSessionMaterial)
+        sessionMaterial: keyczar.keyczar_util.encodeBase64Url(rawSessionMaterial)
     };
 
     crypter.encrypt = function(plaintext, encoder) {
         var ciphertext = sessionKey.encrypt(plaintext);
 
         // TODO: Call non-null, non-undefined encoder()
-        if (encoder !== null) ciphertext = keyczar_util.encodeBase64Url(ciphertext);
+        if (encoder !== null) ciphertext = keyczar.keyczar_util.encodeBase64Url(ciphertext);
         return ciphertext;
     };
 
     crypter.decrypt = function(message, decoder) {
         // TODO: Call non-null, non-undefined decoder()
-        if (decoder !== null) message = keyczar_util.decodeBase64Url(message);
+        if (decoder !== null) message = keyczar.keyczar_util.decodeBase64Url(message);
         return sessionKey.decrypt(message);
     };
 
@@ -244,22 +259,25 @@ function createSessionCrypter(key, sessionMaterial) {
 function encryptWithSession(key, message) {
     var crypter = createSessionCrypter(key);
     var rawEncrypted = crypter.encrypt(message, null);
-    var packed = keyczar_util._packByteStrings([crypter.rawSessionMaterial, rawEncrypted]);
-    return keyczar_util.encodeBase64Url(packed);
+    var packed = keyczar.keyczar_util._packByteStrings([crypter.rawSessionMaterial, rawEncrypted]);
+    return keyczar.keyczar_util.encodeBase64Url(packed);
 }
 
 function decryptWithSession(key, message) {
-    message = keyczar_util.decodeBase64Url(message);
-    var unpacked = keyczar_util._unpackByteStrings(message);
+    message = keyczar.keyczar_util.decodeBase64Url(message);
+    var unpacked = keyczar.keyczar_util._unpackByteStrings(message);
     var crypter = createSessionCrypter(key, unpacked[0]);
     return crypter.decrypt(unpacked[1], null);
 }
 
-module.exports.TYPE_RSA_PRIVATE = TYPE_RSA_PRIVATE;
-module.exports.TYPE_RSA_PUBLIC = TYPE_RSA_PUBLIC;
-module.exports.TYPE_AES = TYPE_AES;
-module.exports.create = create;
-module.exports.fromJson = fromJson;
-module.exports.createSessionCrypter = createSessionCrypter;
-module.exports.encryptWithSession = encryptWithSession;
-module.exports.decryptWithSession = decryptWithSession;
+keyczar.TYPE_RSA_PRIVATE = TYPE_RSA_PRIVATE;
+keyczar.TYPE_RSA_PUBLIC = TYPE_RSA_PUBLIC;
+keyczar.TYPE_AES = TYPE_AES;
+keyczar.create = create;
+keyczar.fromJson = fromJson;
+keyczar.createSessionCrypter = createSessionCrypter;
+keyczar.encryptWithSession = encryptWithSession;
+keyczar.decryptWithSession = decryptWithSession;
+
+// end module
+})();
