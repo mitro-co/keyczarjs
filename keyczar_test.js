@@ -145,5 +145,19 @@ function testSession() {
     assert.equal(longMessage, keyczar.decryptWithSession(privatekey, ciphertext));
 }
 
+function testStringEncoding() {
+    var unicodeMessage = 'Emoji key: \ud83d\udd11';
+    var key = readKey('symmetric.json');
+    var encrypted = key.encrypt(unicodeMessage);
+    assert.equal(unicodeMessage, key.decrypt(encrypted));
+
+    var binaryMessage = '';
+    for (var i = 0; i < 256; i++) {
+        binaryMessage += String.fromCharCode(i);
+    }
+    encrypted = key.encrypt(binaryMessage);
+    assert.equal(binaryMessage, key.decrypt(encrypted));
+}
+
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
-    testMakeExportRsa, testSymmetric, testRaw, testSession]);
+    testMakeExportRsa, testSymmetric, testRaw, testSession, testStringEncoding]);

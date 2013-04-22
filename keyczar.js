@@ -173,6 +173,8 @@ function _makeKeyczar(data) {
             encoder = keyczar.keyczar_util.encodeBase64Url;
         }
 
+        // encode as UTF-8 in case plaintext contains non-ASCII characters
+        plaintext = forge.util.encodeUtf8(plaintext);
         var message = instance.primary.encrypt(plaintext);
         if (encoder !== null) message = encoder(message);
         return message;
@@ -184,7 +186,8 @@ function _makeKeyczar(data) {
         }
 
         if (decoder !== null) message = decoder(message);
-        return instance.primary.decrypt(message);
+        var plaintext = instance.primary.decrypt(message);
+        return forge.util.decodeUtf8(plaintext);
     };
 
     // Returns the JSON serialization of this keyczar instance.
