@@ -53,8 +53,20 @@ console.log('decrypted:', decrypted);
 ```
 
 
-Using KeyczarJS
--------------------------
+Differences
+-----------
+
+* Input is treated as a Javascript Unicode string. It is converted to UTF-8
+  before encryption, and decoded back to a Javascript Unicode value after
+  decryption.
+
+* Key sets are reads and written as JSON strings. The structure is the same as
+  Keyczar's directories, just as a JSON object.
+
+
+
+Adding KeyczarJS to your project
+--------------------------------
 
 Each script in this package is defined to be usable both by node's require()
 statement and in a browser. In the browser, it creates a global keyczar
@@ -65,12 +77,6 @@ following script files:
   random.js
 * Keyczar: keyczar_util.js aes_oaep.js keyczar.js
 
-
-Differences
------------
-
-* Reads and writes key sets as JSON strings. The structure is the same as
-  Keyczar's directories, just as a JSON object.
 
 
 Additions to Java Keyczar
