@@ -159,5 +159,39 @@ function testStringEncoding() {
     assert.equal(binaryMessage, key.decrypt(encrypted));
 }
 
+var ENCRYPTED_KEYCZAR = {
+   encrypted: true,
+   name: "Test",
+   purpose: "DECRYPT_AND_ENCRYPT",
+   type: "AES",
+   versions: [ {
+      "exportable": false,
+      "status": "PRIMARY",
+      "versionNumber": 1
+   } ]
+};
+
+var ENCRYPTED_JSON = {
+    "cipher": "AES128",
+    "hmac": "HMAC_SHA1",
+    "iterationCount": 4096,
+    "iv": "z3BdMSyqfrh-qmv1YLXvFg",
+    "key": "ZoavQvg_IRDGG57NQIn4kjuBRyRsX3p6JPWX1jnNUBtUQyAHTd381CzKyqOZIIVt8nIkkzdN3JjtTyYMQSEE9ZTVZ_RVC1enTzLZuEL5gZCbmJyRzX1eBdpTN1bFbIt3aOMiFxjFzP-O67ErGnUHpBHmmCxmau-MBUpCd6Su-eum3SIERsaMzsMDEcivCrd5SW20HokMWCxu_GImVxyQuA",
+    "salt": "EwDMYR65XcUmvggvoW1GMw"
+};
+
+function testEncryptedKey() {
+    var encryptedKey = JSON.stringify({
+        "1": JSON.stringify(ENCRYPTED_JSON),
+        "meta": JSON.stringify(ENCRYPTED_KEYCZAR)
+    });
+
+    assert.throws(function() { keyczar.fromJson(encryptedKey); });
+
+    // TODO: test round tripping this to/from Java
+    var decryptedKey = keyczar.fromJson(encryptedKey, "pass");
+    assert.equal('hello', decryptedKey.decrypt(decryptedKey.encrypt('hello')));
+}
+
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
-    testMakeExportRsa, testSymmetric, testRaw, testSession, testStringEncoding]);
+    testMakeExportRsa, testSymmetric, testRaw, testSession, testStringEncoding, testEncryptedKey]);

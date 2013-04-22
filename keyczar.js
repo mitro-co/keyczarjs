@@ -119,9 +119,11 @@ function _exportPublicKey(key) {
     return _makeKeyczar(data);
 }
 
-function fromJson(serialized) {
+/** Returns the key set contained in the JSON string serialized. If password is provided,
+expects an encrypted key using a key derived from password. */
+function fromJson(serialized, password) {
     var data = JSON.parse(serialized);
-    return _makeKeyczar(data);
+    return _makeKeyczar(data, password);
 }
 
 // find the primary version; ensure we don't have more than one
@@ -143,20 +145,58 @@ function _getPrimaryVersion(metadata) {
     return primaryVersion;
 }
 
+function _decryptKey(keyString, password) {
+    var data = JSON.parse(keyString);
+
+    // derive the password key
+    if (data.cipher != 'AES128') {
+        throw new Error('Unsupported encryption cipher: ' + data.cipher);
+    }
+    if (data.hmac != 'HMAC_SHA1') {
+        throw new Error('Unsupported key derivation function: ' + data.hmac);
+    }
+    var iv = keyczar.keyczar_util.decodeBase64Url(data.iv);
+    var salt = keyczar.keyczar_util.decodeBase64Url(data.salt);
+    var key = keyczar.keyczar_util.decodeBase64Url(data.key);
+
+    var AES_KEY_BYTES = 16;
+    var derivedKey = forge.pkcs5.pbkdf2(password, salt, data.iterationCount, AES_KEY_BYTES, forge.md.sha1.create());
+
+    // decrypt the key with the derived key
+    var cipher = forge.aes.startDecrypting(derivedKey, iv, null);
+    cipher.update(new forge.util.ByteBuffer(key));
+    success = cipher.finish();
+    if (!success) {
+        throw new Error('AES decryption failed');
+    }
+
+    return cipher.output.getBytes();
+}
+
 // Returns a Keyczar object from data.
-function _makeKeyczar(data) {
+function _makeKeyczar(data, password) {
     var instance = {};
 
     instance.metadata = JSON.parse(data.meta);
     if (instance.metadata.encrypted !== false) {
-        throw new Error('Encrypted keys not supported');
+        if (!password) {
+            throw new Error('Key is encrypted; you must provide the password');
+        }
+        if (password.length === 0) {
+            throw new Error('Must supply a password length > 0');
+        }
+    } else if (password) {
+        throw new Error('Key is not encrypted but password provided');
     }
 
     var primaryVersion = _getPrimaryVersion(instance.metadata);
+    var primaryKeyString = data[String(primaryVersion)];
+    if (instance.metadata.encrypted) {
+        primaryKeyString = _decryptKey(primaryKeyString, password);
+    }
 
     var t = instance.metadata.type;
     var p = instance.metadata.purpose;
-    var primaryKeyString = data[String(primaryVersion)];
     if (t == TYPE_RSA_PRIVATE && p == PURPOSE_DECRYPT_ENCRYPT) {
         instance.primary = keyczar.keyczar_util.privateKeyFromKeyczar(primaryKeyString);
         instance.exportPublicKey = function() { return _exportPublicKey(instance); };
