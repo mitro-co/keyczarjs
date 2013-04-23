@@ -145,22 +145,48 @@ function _getPrimaryVersion(metadata) {
     return primaryVersion;
 }
 
+var _PBE_CIPHER = 'AES128';
+var _PBE_HMAC = 'HMAC_SHA1';
+var _PBE_AES_KEY_BYTES = 16;
+
+// PBKDF2 RFC 2898 recommends at least 8 bytes (64 bits) of salt
+// http://tools.ietf.org/html/rfc2898#section-4
+// but NIST recommends at least 16 bytes (128 bits)
+// http://csrc.nist.gov/publications/nistpubs/800-132/nist-sp800-132.pdf
+var _SALT_BYTES = 16;
+
+// NIST suggests count to be 1000 as a minimum, but that seems poor
+// 4 GPUs can do 3M attempts/second with 1000 iterations.
+var MIN_ITERATION_COUNT = 1000;
+
+// C++ Keyczar uses this many iterations by default (crypto_factory.cc)
+var _CPP_ITERATION_COUNT = 4096;
+
+var _DEFAULT_ITERATIONS = 10000;
+
+function _deriveKey(password, salt, iterationCount) {
+    // check ! > 0 so that it fails for undefined
+    if (!(iterationCount > 0)) {
+        throw new Error('Invalid iterationCount: ' + iterationCount);
+    }
+    return forge.pkcs5.pbkdf2(password, salt, iterationCount, _PBE_AES_KEY_BYTES, forge.md.sha1.create());
+}
+
 function _decryptKey(keyString, password) {
     var data = JSON.parse(keyString);
 
     // derive the password key
-    if (data.cipher != 'AES128') {
+    if (data.cipher != _PBE_CIPHER) {
         throw new Error('Unsupported encryption cipher: ' + data.cipher);
     }
-    if (data.hmac != 'HMAC_SHA1') {
+    if (data.hmac != _PBE_HMAC) {
         throw new Error('Unsupported key derivation function: ' + data.hmac);
     }
     var iv = keyczar.keyczar_util.decodeBase64Url(data.iv);
     var salt = keyczar.keyczar_util.decodeBase64Url(data.salt);
     var key = keyczar.keyczar_util.decodeBase64Url(data.key);
 
-    var AES_KEY_BYTES = 16;
-    var derivedKey = forge.pkcs5.pbkdf2(password, salt, data.iterationCount, AES_KEY_BYTES, forge.md.sha1.create());
+    var derivedKey = _deriveKey(password, salt, data.iterationCount);
 
     // decrypt the key with the derived key
     var cipher = forge.aes.startDecrypting(derivedKey, iv, null);
@@ -171,6 +197,32 @@ function _decryptKey(keyString, password) {
     }
 
     return cipher.output.getBytes();
+}
+
+function _encryptKey(keyString, password) {
+    // derive the key
+    var iterationCount = _DEFAULT_ITERATIONS;
+    var salt = forge.random.getBytes(_SALT_BYTES);
+    var derivedKey = _deriveKey(password, salt, iterationCount);
+
+    var iv = forge.random.getBytes(_PBE_AES_KEY_BYTES);
+    var cipher = forge.aes.startEncrypting(derivedKey, iv, null);
+    cipher.update(new forge.util.ByteBuffer(keyString));
+    success = cipher.finish();
+    if (!success) {
+        throw new Error('AES encryption failed');
+    }
+
+    var output = {
+        salt: keyczar.keyczar_util.encodeBase64Url(salt),
+        iterationCount: iterationCount,
+        hmac: _PBE_HMAC,
+
+        cipher: _PBE_CIPHER,
+        iv: keyczar.keyczar_util.encodeBase64Url(iv),
+        key: keyczar.keyczar_util.encodeBase64Url(cipher.output.getBytes())
+    };
+    return JSON.stringify(output);
 }
 
 // Returns a Keyczar object from data.
@@ -233,8 +285,7 @@ function _makeKeyczar(data, password) {
         };
     }
 
-    // Returns the JSON serialization of this keyczar instance.
-    instance.toJson = function() {
+    var _toJsonObject = function() {
         var out = {};
         out.meta = JSON.stringify(instance.metadata);
 
@@ -244,7 +295,39 @@ function _makeKeyczar(data, password) {
         }
         var primaryVersion = _getPrimaryVersion(instance.metadata);
         out[String(primaryVersion)] = instance.primary.toJson();
+        return out;
+    };
+
+    // Returns the JSON serialization of this keyczar instance.
+    instance.toJson = function() {
+        if (instance.metadata.encrypted) {
+            throw new Error('Key is encrypted; use toJsonEncrypted() instead');
+        }
+        var out = _toJsonObject();
         return JSON.stringify(out);
+    };
+
+    instance.toJsonEncrypted = function(password) {
+        // TODO: Enforce some sort of minimum length?
+        if (password.length === 0) {
+            throw new Error('Password length must be > 0');
+        }
+
+        // get the unencrypted JSON object
+        var unencrypted = _toJsonObject();
+
+        // set metadata.encrypted = true
+        var meta = JSON.parse(unencrypted.meta);
+        meta.encrypted = true;
+        unencrypted.meta = JSON.stringify(meta);
+
+        // encrypt each key
+        for (var property in unencrypted) {
+            if (property == 'meta') continue;
+            unencrypted[property] = _encryptKey(unencrypted[property], password);
+        }
+
+        return JSON.stringify(unencrypted);
     };
 
     return instance;

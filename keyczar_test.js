@@ -193,6 +193,15 @@ function testEncryptedKey() {
     // TODO: test round tripping this to/from Java
     var decryptedKey = keyczar.fromJson(encryptedKey, "pass");
     assert.equal('hello', decryptedKey.decrypt(decryptedKey.encrypt('hello')));
+    assert.throws(function() { decryptedKey.toJson(); });
+
+    var key = keyczar.create(keyczar.TYPE_AES);
+    var encryptedKey2 = key.toJsonEncrypted('hellopassword');
+    assert.throws(function() { keyczar.fromJson(encryptedKey2); });
+    var key2 = keyczar.fromJson(encryptedKey2, 'hellopassword');
+    assert(key2.metadata.encrypted);
+    assert.equal('hello', key2.decrypt(key.encrypt('hello')));
+    assert.throws(function() { key2.toJson(); });
 }
 
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
