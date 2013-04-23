@@ -35,6 +35,8 @@ function testKeyczarRsa() {
     assert(encrypted3 != encrypted2);
     decrypted = privatekey.decrypt(encrypted3);
     assert.equal(EXAMPLE_MESSAGE, decrypted);
+
+    assert.throws(function() { publickey.decrypt(encrypted3); }, TypeError);
 }
 
 // Round trip every possible byte to ensure JS encoding doesn't screw things up

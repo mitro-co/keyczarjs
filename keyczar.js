@@ -220,15 +220,18 @@ function _makeKeyczar(data, password) {
         return message;
     };
 
-    instance.decrypt = function(message, decoder) {
-        if (!decoder && decoder !== null) {
-            decoder = keyczar.keyczar_util.decodeBase64Url;
-        }
+    // only include decryption if supported by this key type
+    if (p == PURPOSE_DECRYPT_ENCRYPT) {
+        instance.decrypt = function(message, decoder) {
+            if (!decoder && decoder !== null) {
+                decoder = keyczar.keyczar_util.decodeBase64Url;
+            }
 
-        if (decoder !== null) message = decoder(message);
-        var plaintext = instance.primary.decrypt(message);
-        return forge.util.decodeUtf8(plaintext);
-    };
+            if (decoder !== null) message = decoder(message);
+            var plaintext = instance.primary.decrypt(message);
+            return forge.util.decodeUtf8(plaintext);
+        };
+    }
 
     // Returns the JSON serialization of this keyczar instance.
     instance.toJson = function() {
