@@ -365,34 +365,34 @@ function _aesFromBytes(keyBytes, hmacBytes) {
     };
     key.encrypt = function(input) {
         // generate a random IV
-        iv = forge.random.getBytes(keyBytes.length);
+        var iv = forge.random.getBytes(keyBytes.length);
 
         // TODO: cache the cipher object?
-        cipher = forge.aes.startEncrypting(keyBytes, iv, null);
+        var cipher = forge.aes.startEncrypting(keyBytes, iv, null);
         cipher.update(new forge.util.ByteBuffer(input));
-        success = cipher.finish();
+        var success = cipher.finish();
         if (!success) {
             throw new Error('AES encryption failed');
         }
 
-        output = _packOutput(key.keyhash, iv + cipher.output.getBytes());
+        var output = _packOutput(key.keyhash, iv + cipher.output.getBytes());
 
         // compute the HMAC over the entire message
         hmacObject.start(null, null);
         hmacObject.update(output);
-        hmac = hmacObject.getMac();
+        var hmac = hmacObject.getMac();
         return output + hmac.data;
     };
 
     key.decrypt = function(message) {
-        unpacked = _unpackOutput(message);
+        var unpacked = _unpackOutput(message);
         _checkKeyHash(key.keyhash, unpacked);
 
         // check the HMAC over the entire message
         var hmac = message.substring(message.length - mdObject.digestLength);
         hmacObject.start(null, null);
         hmacObject.update(message.substring(0, message.length - mdObject.digestLength));
-        hmacPrime = hmacObject.getMac().data;
+        var hmacPrime = hmacObject.getMac().data;
 
         if (!constantTimeEquals(hmac, hmacPrime)) {
             throw new Error('Decryption failed: HMAC does not match');
@@ -402,9 +402,9 @@ function _aesFromBytes(keyBytes, hmacBytes) {
         var iv = unpacked.message.substring(0, keyBytes.length);
         var ciphertext = unpacked.message.substring(keyBytes.length, unpacked.message.length - mdObject.digestLength);
 
-        cipher = forge.aes.startDecrypting(keyBytes, iv, null);
+        var cipher = forge.aes.startDecrypting(keyBytes, iv, null);
         cipher.update(new forge.util.ByteBuffer(ciphertext));
-        success = cipher.finish();
+        var success = cipher.finish();
         if (!success) {
             throw new Error('Decryption failed: AES error?');
         }
@@ -412,7 +412,7 @@ function _aesFromBytes(keyBytes, hmacBytes) {
     };
 
     key.toJson = function() {
-        data = {
+        var data = {
             aesKeyString: encodeBase64Url(keyBytes),
             size: keyBytes.length*8,
             mode: MODE_CBC,
