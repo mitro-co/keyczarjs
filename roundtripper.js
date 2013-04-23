@@ -18,8 +18,8 @@ function encrypt(keyPath, message, outputPath) {
     writeFile(outputPath, encrypted);
 }
 
-function decrypt(keyPath, encryptedPath, expectedMessage, expectedType) {
-    var key = keyczar.fromJson(readFile(keyPath));
+function decrypt(keyPath, encryptedPath, expectedMessage, expectedType, keyPassword) {
+    var key = keyczar.fromJson(readFile(keyPath), keyPassword);
     if (key.metadata.type != expectedType) {
         throw new Error('Unexpected key type: ' + key.metadata.type);
     }
@@ -37,6 +37,10 @@ function decrypt(keyPath, encryptedPath, expectedMessage, expectedType) {
 }
 
 function makeLonger(input) {
+    if (input.length === 0) {
+        input = '\x00';
+    }
+
     while (input.length < 1000) {
         input += input;
     }
@@ -68,6 +72,7 @@ if (process.argv.length != 4 && process.argv.length != 5) {
 var mode = process.argv[2];
 var dirpath = process.argv[3];
 var message = 'Hello this is a longish message from Javascript';
+var password = 'foopassword';
 if (process.argv.length == 5) {
     message = process.argv[4];
 }
@@ -82,6 +87,9 @@ if (mode == 'encrypt') {
 
     console.log('encrypting message length', message.length);
     encrypt(dirpath + '/publickey.json', message, dirpath + '/publickey_encrypted');
+
+    console.log('encrypting key with password');
+    writeFile(dirpath + '/privatekey_encrypted.json', privateKey.toJsonEncrypted(password));
 
     console.log('generating AES key ...');
     var symmetric = keyczar.create(keyczar.TYPE_AES);
@@ -99,6 +107,12 @@ if (mode == 'encrypt') {
 } else if (mode == 'roundtrip') {
     var decrypted = decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_encrypted', null, keyczar.TYPE_RSA_PRIVATE);
     encrypt(dirpath + '/publickey.json', decrypted, dirpath + '/publickey_reencrypted');
+
+    var decrypted2 = decrypt(dirpath + '/privatekey_encrypted.json', dirpath + '/publickey_encrypted', null, keyczar.TYPE_RSA_PRIVATE, password);
+    if (decrypted2 != decrypted) {
+        process.stderr.write('encrypted private key did not work?\n');
+        process.exit(1);
+    }
 
     decrypted = decrypt(dirpath + '/symmetric.json', dirpath + '/symmetric_encrypted', null, keyczar.TYPE_AES);
     encrypt(dirpath + '/symmetric.json', decrypted, dirpath + '/symmetric_reencrypted');

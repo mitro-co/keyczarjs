@@ -56,9 +56,10 @@ console.log('decrypted:', decrypted);
 Differences
 -----------
 
-* Input is treated as a Javascript Unicode string. It is converted to UTF-8
-  before encryption, and decoded back to a Javascript Unicode value after
-  decryption.
+* By default input is treated as a Javascript Unicode string. It is converted to
+  UTF-8 before encryption, and decoded back to a Javascript Unicode value after
+  decryption. This can cause exceptions to be thrown if decrypting binary data
+  that is not valid UTF-8. In this case, use encryptBinary()/decryptBinary().
 
 * Key sets are reads and written as JSON strings. The structure is the same as
   Keyczar's directories, just as a JSON object.

@@ -260,28 +260,31 @@ function _makeKeyczar(data, password) {
         throw new Error('Unsupported key type/purpose: ' + t + '/' + p);
     }
 
-    instance.encrypt = function(plaintext, encoder) {
-        if (!encoder && encoder !== null) {
-            encoder = keyczar.keyczar_util.encodeBase64Url;
-        }
+    // Takes a raw byte string, returns a raw byte string
+    instance.encryptBinary = function(plaintext) {
+        // TODO: assert that plaintext does not contain special characters
+        return instance.primary.encrypt(plaintext);
+    };
 
+    instance.encrypt = function(plaintext) {
         // encode as UTF-8 in case plaintext contains non-ASCII characters
         plaintext = forge.util.encodeUtf8(plaintext);
-        var message = instance.primary.encrypt(plaintext);
-        if (encoder !== null) message = encoder(message);
+        var message = instance.encryptBinary(plaintext);
+        message = keyczar.keyczar_util.encodeBase64Url(message);
         return message;
     };
 
     // only include decryption if supported by this key type
     if (p == PURPOSE_DECRYPT_ENCRYPT) {
-        instance.decrypt = function(message, decoder) {
-            if (!decoder && decoder !== null) {
-                decoder = keyczar.keyczar_util.decodeBase64Url;
-            }
+        instance.decryptBinary = function(message) {
+            return instance.primary.decrypt(message);
+        };
 
-            if (decoder !== null) message = decoder(message);
+        instance.decrypt = function(message) {
+            message = keyczar.keyczar_util.decodeBase64Url(message);
             var plaintext = instance.primary.decrypt(message);
-            return forge.util.decodeUtf8(plaintext);
+            plaintext = forge.util.decodeUtf8(plaintext);
+            return plaintext;
         };
     }
 
@@ -347,7 +350,7 @@ function createSessionCrypter(key, sessionMaterial) {
         } else {
             rawSessionMaterial = keyczar.keyczar_util.decodeBase64Url(sessionMaterial);
         }
-        var decrypted = key.decrypt(rawSessionMaterial, null);
+        var decrypted = key.decryptBinary(rawSessionMaterial);
         var keyBytes = keyczar.keyczar_util._unpackByteStrings(decrypted);
 
         sessionKey = keyczar.keyczar_util._aesFromBytes(keyBytes[0], keyBytes[1]);
@@ -357,7 +360,7 @@ function createSessionCrypter(key, sessionMaterial) {
 
         // encrypt the key
         var packed = sessionKey.pack();
-        rawSessionMaterial = key.encrypt(packed, null);
+        rawSessionMaterial = key.encryptBinary(packed);
     }
 
     var crypter = {
@@ -365,17 +368,12 @@ function createSessionCrypter(key, sessionMaterial) {
         sessionMaterial: keyczar.keyczar_util.encodeBase64Url(rawSessionMaterial)
     };
 
-    crypter.encrypt = function(plaintext, encoder) {
-        var ciphertext = sessionKey.encrypt(plaintext);
-
-        // TODO: Call non-null, non-undefined encoder()
-        if (encoder !== null) ciphertext = keyczar.keyczar_util.encodeBase64Url(ciphertext);
-        return ciphertext;
+    crypter.encryptBinary = function(plaintext) {
+        // TODO: assert that plaintext has no special chars
+        return sessionKey.encrypt(plaintext);
     };
 
-    crypter.decrypt = function(message, decoder) {
-        // TODO: Call non-null, non-undefined decoder()
-        if (decoder !== null) message = keyczar.keyczar_util.decodeBase64Url(message);
+    crypter.decryptBinary = function(message) {
         return sessionKey.decrypt(message);
     };
 
@@ -387,7 +385,8 @@ function createSessionCrypter(key, sessionMaterial) {
 // Convenience wrapper around a SessionCrypter.
 function encryptWithSession(key, message) {
     var crypter = createSessionCrypter(key);
-    var rawEncrypted = crypter.encrypt(message, null);
+    message = forge.util.encodeUtf8(message);
+    var rawEncrypted = crypter.encryptBinary(message);
     var packed = keyczar.keyczar_util._packByteStrings([crypter.rawSessionMaterial, rawEncrypted]);
     return keyczar.keyczar_util.encodeBase64Url(packed);
 }
@@ -396,7 +395,8 @@ function decryptWithSession(key, message) {
     message = keyczar.keyczar_util.decodeBase64Url(message);
     var unpacked = keyczar.keyczar_util._unpackByteStrings(message);
     var crypter = createSessionCrypter(key, unpacked[0]);
-    return crypter.decrypt(unpacked[1], null);
+    var plaintext = crypter.decryptBinary(unpacked[1]);
+    return forge.util.decodeUtf8(plaintext);
 }
 
 keyczar.TYPE_RSA_PRIVATE = TYPE_RSA_PRIVATE;
