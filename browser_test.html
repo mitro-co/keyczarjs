@@ -2,24 +2,29 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<script type="text/javascript" src="node_modules/forge/js/rsa.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/asn1.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/oids.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/pki.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/jsbn.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/util.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/sha1.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/prng.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/aes.js"></script>
-<script type="text/javascript" src="node_modules/forge/js/random.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/pbkdf2.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/hmac.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/rsa.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/asn1.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/oids.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/pki.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/jsbn.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/util.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/sha1.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/prng.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/aes.js"></script>
+<script type="text/javascript" src="node_modules/node-forge/js/random.js"></script>
 
 <script type="text/javascript" src="keyczar_util.js"></script>
 <script type="text/javascript" src="rsa_oaep.js"></script>
 <script type="text/javascript" src="keyczar.js"></script>
 </head>
 <body>
-<p>Input message: <span id="input">hello world?</span></p>
-<!-- <p>Input message: <span id="input">Héllo world? 本 Key Emoji: 🔑</span></p> -->
+<span id="success" style="color: green; font-weight: bold;"></span>
+<span id="error" style="color: red; font-weight: bold;"></span>
+
+<!-- <p>Input message: <span id="input">hello world?</span></p> -->
+<p>Input message: <span id="input">Héllo world? 本 Key Emoji: 🔑</span></p>
 
 <p>Key generation time (2048-bit RSA): <span id="time"></span> ms</p>
 <p>Encrypted: <span id="encrypted"></span></p>
@@ -28,6 +33,9 @@
 <hr>
 <p>Public key: <span id="publickey"></span></p>
 <p>Private key: <span id="privatekey"></span></p>
+
+<hr>
+<p>Encrypted key: <span id="encryptedkey"></span></p>
 
 <script type="text/javascript">
 var outputElement = document.getElementById('output');
@@ -39,21 +47,43 @@ var options = {
 var start = new Date();
 var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, options);
 var end = new Date();
-document.getElementById('time').innerText = (end - start).toString();
-document.getElementById('privatekey').innerText = privateKey.toJson();
-document.getElementById('publickey').innerText = privateKey.exportPublicKey().toJson();
+
+document.getElementById('time').textContent = (end - start).toString();
+document.getElementById('privatekey').textContent = privateKey.toJson();
+document.getElementById('publickey').textContent = privateKey.exportPublicKey().toJson();
 
 var publicKey = keyczar.fromJson(privateKey.exportPublicKey().toJson());
 
 // Test round tripping using the exported key
-var message = document.getElementById('input').innerText;
-console.log(message);
+var message = document.getElementById('input').textContent;
 var encrypted = publicKey.encrypt(message);
-document.getElementById('encrypted').innerText = encrypted;
+document.getElementById('encrypted').textContent = encrypted;
 
 privateKey = keyczar.fromJson(privateKey.toJson());
 var decrypted = privateKey.decrypt(encrypted);
-document.getElementById('decrypted').innerText = decrypted;
+document.getElementById('decrypted').textContent = decrypted;
+var success = true;
+if (decrypted != message) {
+  document.getElementById('error').innerHTML += '<p>Decryption failed?</p>';
+  success = false;
+}
+
+// Encrypt the private key
+var password = 'password';
+var encryptedKey = privateKey.toJsonEncrypted(password)
+document.getElementById('encryptedkey').textContent = encryptedKey;
+
+// Decrypt the key and decrypt the value
+var decryptedKey = keyczar.fromJson(encryptedKey, password);
+decrypted = decryptedKey.decrypt(encrypted);
+if (decrypted != message) {
+  document.getElementById('error').innerHTML += '<p>Decrypted key failed?</p>';
+  success = false;
+}
+
+if (success) {
+  document.getElementById('success').textContent = 'SUCCESS!';
+}
 </script>
 </body>
 </html>
