@@ -250,6 +250,15 @@ function _rsaPrivateKeyToKeyczarJson(key) {
     return JSON.stringify(obj);
 }
 
+function _mdForSignature(message) {
+    var mdObject = forge.md.sha1.create();
+    mdObject.update(message);
+    // Keyczar signature format appends the version byte
+    // https://code.google.com/p/keyczar/wiki/SignatureFormat
+    mdObject.update(VERSION_BYTE);
+    return mdObject;
+}
+
 // Returns a key object for an RSA key.
 function _makeRsaKey(rsaKey) {
     var key = {
@@ -261,6 +270,18 @@ function _makeRsaKey(rsaKey) {
         ciphertext = keyczar.rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
         return _packOutput(key.keyhash, ciphertext);
     };
+
+    key.verify = function(message, signature) {
+        signature = _unpackOutput(signature);
+        _checkKeyHash(key.keyhash, signature);
+
+        var digest = _mdForSignature(message).digest().getBytes();
+
+        // needed to make this work with private keys
+        var tempKey = forge.pki.setRsaPublicKey(rsaKey.n, rsaKey.e);
+        return tempKey.verify(digest, signature.message);
+    };
+
     return key;
 }
 
@@ -301,6 +322,13 @@ function privateKeyFromKeyczar(serialized) {
         _checkKeyHash(key.keyhash, message);
         return keyczar.rsa_oaep.rsa_oaep_decrypt(rsaKey, message.message);
     };
+
+    key.sign = function(message) {
+        var md = _mdForSignature(message);
+        var signature = rsaKey.sign(md);
+
+        return _packOutput(key.keyhash, signature);
+    }
 
     /** Returns a JSON string containing the public part of this key. */
     key.exportPublicKeyJson = function() {

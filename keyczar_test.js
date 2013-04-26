@@ -223,6 +223,26 @@ function testEncryptedKey() {
     assert.throws(function() { key2.toJson(); });
 }
 
+function testSigning() {
+    // private key can sign and verify
+    var key = keyczar.fromJson(readTestData('privatekey_sign.json'));
+    var signature = readTestData('privatekey_sign_signed');
+    assert(key.verify(EXAMPLE_MESSAGE, signature));
+
+    // simple RSA signatures are deterministic (no random padding)
+    assert.equal(signature, key.sign(EXAMPLE_MESSAGE));
+
+    // public key can verify
+    var publicKey = keyczar.fromJson(readTestData('publickey_sign.json'));
+    assert(publicKey.verify(EXAMPLE_MESSAGE, signature));
+
+    // round trip the keys
+    key = keyczar.fromJson(key.toJson());
+    assert.equal(signature, key.sign(EXAMPLE_MESSAGE));
+    publicKey = keyczar.fromJson(publicKey.toJson());
+    assert(publicKey.verify(EXAMPLE_MESSAGE, signature));
+}
+
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
     testMakeExportRsa, testSymmetric, testRawBinary, testSession, testStringEncoding,
-    testEncryptedKey]);
+    testEncryptedKey, testSigning]);

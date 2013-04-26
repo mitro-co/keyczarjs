@@ -23,6 +23,8 @@ var TYPE_RSA_PRIVATE = 'RSA_PRIV';
 var TYPE_RSA_PUBLIC = 'RSA_PUB';
 var PURPOSE_DECRYPT_ENCRYPT = 'DECRYPT_AND_ENCRYPT';
 var PURPOSE_ENCRYPT = 'ENCRYPT';
+var PURPOSE_VERIFY = 'VERIFY';
+var PURPOSE_SIGN_VERIFY = 'SIGN_AND_VERIFY';
 var STATUS_PRIMARY = 'PRIMARY';
 
 var RSA_DEFAULT_BITS = 4096;
@@ -249,43 +251,59 @@ function _makeKeyczar(data, password) {
 
     var t = instance.metadata.type;
     var p = instance.metadata.purpose;
-    if (t == TYPE_RSA_PRIVATE && p == PURPOSE_DECRYPT_ENCRYPT) {
+    if (t == TYPE_RSA_PRIVATE) {
         instance.primary = keyczar.keyczar_util.privateKeyFromKeyczar(primaryKeyString);
         instance.exportPublicKey = function() { return _exportPublicKey(instance); };
-    } else if (t == TYPE_RSA_PUBLIC && p == PURPOSE_ENCRYPT) {
+    } else if (t == TYPE_RSA_PUBLIC) {
         instance.primary = keyczar.keyczar_util.publicKeyFromKeyczar(primaryKeyString);
     } else if (t == TYPE_AES && p == PURPOSE_DECRYPT_ENCRYPT) {
         instance.primary = keyczar.keyczar_util.aesFromKeyczar(primaryKeyString);
     } else {
-        throw new Error('Unsupported key type/purpose: ' + t + '/' + p);
+        throw new Error('Unsupported key type: ' + t);
     }
 
-    // Takes a raw byte string, returns a raw byte string
-    instance.encryptBinary = function(plaintext) {
-        // TODO: assert that plaintext does not contain special characters
-        return instance.primary.encrypt(plaintext);
-    };
-
-    instance.encrypt = function(plaintext) {
-        // encode as UTF-8 in case plaintext contains non-ASCII characters
-        plaintext = forge.util.encodeUtf8(plaintext);
-        var message = instance.encryptBinary(plaintext);
-        message = keyczar.keyczar_util.encodeBase64Url(message);
-        return message;
-    };
-
-    // only include decryption if supported by this key type
-    if (p == PURPOSE_DECRYPT_ENCRYPT) {
-        instance.decryptBinary = function(message) {
-            return instance.primary.decrypt(message);
+    if (p == PURPOSE_ENCRYPT || p == PURPOSE_DECRYPT_ENCRYPT) {
+        // Takes a raw byte string, returns a raw byte string
+        instance.encryptBinary = function(plaintext) {
+            // TODO: assert that plaintext does not contain special characters
+            return instance.primary.encrypt(plaintext);
         };
 
-        instance.decrypt = function(message) {
-            message = keyczar.keyczar_util.decodeBase64Url(message);
-            var plaintext = instance.primary.decrypt(message);
-            plaintext = forge.util.decodeUtf8(plaintext);
-            return plaintext;
+        instance.encrypt = function(plaintext) {
+            // encode as UTF-8 in case plaintext contains non-ASCII characters
+            plaintext = forge.util.encodeUtf8(plaintext);
+            var message = instance.encryptBinary(plaintext);
+            message = keyczar.keyczar_util.encodeBase64Url(message);
+            return message;
         };
+
+        // only include decryption if supported by this key type
+        if (p == PURPOSE_DECRYPT_ENCRYPT) {
+            instance.decryptBinary = function(message) {
+                return instance.primary.decrypt(message);
+            };
+
+            instance.decrypt = function(message) {
+                message = keyczar.keyczar_util.decodeBase64Url(message);
+                var plaintext = instance.primary.decrypt(message);
+                plaintext = forge.util.decodeUtf8(plaintext);
+                return plaintext;
+            };
+        }
+    } else if (p == PURPOSE_VERIFY || p == PURPOSE_SIGN_VERIFY) {
+        instance.verify = function(message, signature) {
+            message = forge.util.encodeUtf8(message);
+            signature = keyczar.keyczar_util.decodeBase64Url(signature);
+            return instance.primary.verify(message, signature);
+        };
+
+        if (p == PURPOSE_SIGN_VERIFY) {
+            instance.sign = function(message) {
+                message = forge.util.encodeUtf8(message);
+                var signature =  instance.primary.sign(message);
+                return keyczar.keyczar_util.encodeBase64Url(signature);
+            };
+        }
     }
 
     var _toJsonObject = function() {
