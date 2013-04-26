@@ -250,6 +250,11 @@ function testSigning() {
     signature = key.sign(EXAMPLE_MESSAGE);
     publicKey = keyczar.fromJson(key.exportPublicKey().toJson());
     assert(publicKey.verify(EXAMPLE_MESSAGE, signature));
+
+    // test encrypting the signing key
+    var encrypted = key.toJsonEncrypted('password');
+    var decrypted = keyczar.fromJson(encrypted, 'password');
+    assert.equal(signature, decrypted.sign(EXAMPLE_MESSAGE));
 }
 
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
