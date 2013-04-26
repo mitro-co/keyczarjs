@@ -43,7 +43,10 @@ function _generateAes(size) {
 // Returns a new Keyczar key. Note: this is slow for RSA keys.
 // TODO: Support different types. Right now it generates asymmetric RSA keys.
 // TODO: Possibly generate the key in steps to avoid hanging a browser?
-function create(type, options) {
+function create(type, purpose, options) {
+    if (!purpose) {
+        purpose = PURPOSE_DECRYPT_ENCRYPT;
+    }
     if (!options) {
         options = {};
     }
@@ -70,10 +73,14 @@ function create(type, options) {
         throw new Error('Unsupported key type: ' + type);
     }
 
+    if (!(purpose == PURPOSE_DECRYPT_ENCRYPT || purpose == PURPOSE_SIGN_VERIFY)) {
+        throw new Error('Unsupported purpose: ' + purpose);
+    }
+
     // Create the initial metadata
     var metadata = {
         name: options.name,
-        purpose: PURPOSE_DECRYPT_ENCRYPT,
+        purpose: purpose,
         type: type,
         encrypted: false,
         versions: [{
@@ -94,14 +101,20 @@ function create(type, options) {
 
 // Return a new keyczar containing the public part of key, which must be an asymmetric key.
 function _exportPublicKey(key) {
-    if (key.metadata.type != TYPE_RSA_PRIVATE && key.metadata.purpose != PURPOSE_DECRYPT_ENCRYPT) {
-        throw new Error('Unsupported key type/purpose:' +
-            key.metadata.type + '/' + key.metadata.purpose);
+    var t = key.metadata.type;
+    var p = key.metadata.purpose;
+    if (!(t == TYPE_RSA_PRIVATE && (p == PURPOSE_DECRYPT_ENCRYPT || p == PURPOSE_SIGN_VERIFY))) {
+        throw new Error('Unsupported key type/purpose:' + t + '/' + p);
+    }
+
+    var publicPurpose = PURPOSE_ENCRYPT;
+    if (p == PURPOSE_SIGN_VERIFY) {
+        publicPurpose = PURPOSE_VERIFY;
     }
 
     var metadata = {
         name: key.metadata.name,
-        purpose: PURPOSE_ENCRYPT,
+        purpose: publicPurpose,
         type: TYPE_RSA_PUBLIC,
         encrypted: false,
         // TODO: Probably should do a deep copy
@@ -420,6 +433,8 @@ function decryptWithSession(key, message) {
 keyczar.TYPE_RSA_PRIVATE = TYPE_RSA_PRIVATE;
 keyczar.TYPE_RSA_PUBLIC = TYPE_RSA_PUBLIC;
 keyczar.TYPE_AES = TYPE_AES;
+keyczar.PURPOSE_DECRYPT_ENCRYPT = PURPOSE_DECRYPT_ENCRYPT;
+keyczar.PURPOSE_SIGN_VERIFY = PURPOSE_SIGN_VERIFY;
 keyczar.create = create;
 keyczar.fromJson = fromJson;
 keyczar.createSessionCrypter = createSessionCrypter;

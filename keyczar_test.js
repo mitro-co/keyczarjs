@@ -83,9 +83,9 @@ function testMaxLengthData() {
 function testMakeExportRsa() {
     // generate a small key to make this fast
     var options = {
-        size: 1024
+        size: 512
     };
-    var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, options);
+    var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, keyczar.PURPOSE_ENCRYPT_DECRYPT, options);
     assert.equal(keyczar.TYPE_RSA_PRIVATE, privateKey.metadata.type);
     var publicKey = privateKey.exportPublicKey();
     assert.equal(keyczar.TYPE_RSA_PUBLIC, publicKey.metadata.type);
@@ -240,6 +240,15 @@ function testSigning() {
     key = keyczar.fromJson(key.toJson());
     assert.equal(signature, key.sign(EXAMPLE_MESSAGE));
     publicKey = keyczar.fromJson(publicKey.toJson());
+    assert(publicKey.verify(EXAMPLE_MESSAGE, signature));
+
+    // generate a key
+    var options = {
+        size: 512
+    };
+    key = keyczar.create(keyczar.TYPE_RSA_PRIVATE, keyczar.PURPOSE_SIGN_VERIFY, options);
+    signature = key.sign(EXAMPLE_MESSAGE);
+    publicKey = keyczar.fromJson(key.exportPublicKey().toJson());
     assert(publicKey.verify(EXAMPLE_MESSAGE, signature));
 }
 
