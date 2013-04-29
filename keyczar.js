@@ -44,7 +44,6 @@ function _generateAes(size) {
 // TODO: Support different types. Right now it generates asymmetric RSA keys.
 // TODO: Possibly generate the key in steps to avoid hanging a browser?
 function create(type, purpose, options) {
-    console.log(type, purpose, options);
     if (!purpose) {
         purpose = PURPOSE_DECRYPT_ENCRYPT;
     }
@@ -63,7 +62,6 @@ function create(type, purpose, options) {
     var size = options.size;
     if (type == TYPE_RSA_PRIVATE) {
         if (!size) size = RSA_DEFAULT_BITS;
-        console.log('size: ' + size);
 
         var generator = forge.pki.rsa.createKeyPairGenerationState(size);
         // run until done
