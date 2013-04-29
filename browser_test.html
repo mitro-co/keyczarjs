@@ -45,7 +45,7 @@ var options = {
     size: 2048
 };
 var start = new Date();
-var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, options);
+var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, null, options);
 var end = new Date();
 
 document.getElementById('time').textContent = (end - start).toString();

@@ -44,6 +44,7 @@ function _generateAes(size) {
 // TODO: Support different types. Right now it generates asymmetric RSA keys.
 // TODO: Possibly generate the key in steps to avoid hanging a browser?
 function create(type, purpose, options) {
+    console.log(type, purpose, options);
     if (!purpose) {
         purpose = PURPOSE_DECRYPT_ENCRYPT;
     }
