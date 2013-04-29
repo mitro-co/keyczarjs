@@ -62,6 +62,7 @@ function create(type, purpose, options) {
     var size = options.size;
     if (type == TYPE_RSA_PRIVATE) {
         if (!size) size = RSA_DEFAULT_BITS;
+        console.log('size: ' + size);
 
         var generator = forge.pki.rsa.createKeyPairGenerationState(size);
         // run until done
@@ -74,7 +75,7 @@ function create(type, purpose, options) {
     }
 
     if (!(purpose == PURPOSE_DECRYPT_ENCRYPT || purpose == PURPOSE_SIGN_VERIFY)) {
-        throw new Error('Unsupported purpose: ' + purpose);
+        throw new Error('Unsupported purpose: ' + JSON.stringify(purpose, null, 2));
     }
 
     // Create the initial metadata
