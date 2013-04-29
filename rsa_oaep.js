@@ -138,7 +138,7 @@ function rsa_oaep_decrypt(key, ciphertext, label) {
 
 function xorString(string1, string2) {
     if (string1.length != string2.length) {
-        throw new Error("mismatched string lengths: "+  string1.length + ", " + string2.length);
+        throw new Error("mismatched string lengths: "+ string1.length + ", " + string2.length);
     }
 
     var out = '';
@@ -149,16 +149,16 @@ function xorString(string1, string2) {
 }
 
 function rsa_mgf1(seed, maskLength, hash) {
-   var t = '';
-   var count = Math.ceil(maskLength / hash.digestLength);
-   for (var i = 0; i < count; i++) {
-      c = String.fromCharCode((i >> 24) & 0xFF, (i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF);
-      hash.start();
-      hash.update(seed + c);
-      t += hash.digest().getBytes();
-   }
+    var t = '';
+    var count = Math.ceil(maskLength / hash.digestLength);
+    for (var i = 0; i < count; i++) {
+        c = String.fromCharCode((i >> 24) & 0xFF, (i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF);
+        hash.start();
+        hash.update(seed + c);
+        t += hash.digest().getBytes();
+    }
 
-   return t.substring(0, maskLength);
+    return t.substring(0, maskLength);
 }
 
 rsa_oaep.rsa_oaep_encrypt = rsa_oaep_encrypt;

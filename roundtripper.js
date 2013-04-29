@@ -79,7 +79,8 @@ function verify(keyPath, message, signaturePath) {
 }
 
 if (process.argv.length != 4 && process.argv.length != 5) {
-    process.stderr.write('node roundtripper.js (mode) (in/out directory) [message to en/decrypt]\n');
+    process.stderr.write(
+        'node roundtripper.js (mode) (in/out directory) [message to en/decrypt]\n');
     process.exit(1);
 }
 
@@ -110,10 +111,12 @@ if (mode == 'encrypt') {
     writeFile(dirpath + '/symmetric.json', symmetric.toJson());
     encrypt(dirpath + '/symmetric.json', message, dirpath + '/symmetric_encrypted');
 
-    encryptSession(dirpath + '/publickey.json', makeLonger(message), dirpath + '/publickey_session');
+    encryptSession(dirpath + '/publickey.json', makeLonger(message),
+        dirpath + '/publickey_session');
 
     console.log('generating signing key ...');
-    var privateSignKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, keyczar.PURPOSE_SIGN_VERIFY, {size:1024});
+    var privateSignKey = keyczar.create(
+        keyczar.TYPE_RSA_PRIVATE, keyczar.PURPOSE_SIGN_VERIFY, {size:1024});
     writeFile(dirpath + '/privatekey_sign.json', privateSignKey.toJson());
 
     // Export the public key; sign with the private key
@@ -122,19 +125,24 @@ if (mode == 'encrypt') {
     sign(dirpath + '/privatekey_sign.json', message, dirpath + '/privatekey_sign');
 } else if (mode == 'decrypt') {
     console.log('asymmetric:');
-    decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_reencrypted', message, keyczar.TYPE_RSA_PRIVATE);
+    decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_reencrypted', message,
+        keyczar.TYPE_RSA_PRIVATE);
     console.log('symmetric:');
-    decrypt(dirpath + '/symmetric.json', dirpath + '/symmetric_reencrypted', message, keyczar.TYPE_AES);
+    decrypt(dirpath + '/symmetric.json', dirpath + '/symmetric_reencrypted', message,
+        keyczar.TYPE_AES);
 
-    var output = decryptSession(dirpath + '/privatekey.json', dirpath + '/publickey_session_reencrypted', makeLonger(message));
+    var output = decryptSession(dirpath + '/privatekey.json',
+        dirpath + '/publickey_session_reencrypted', makeLonger(message));
 
     // verify the session signature
     verify(dirpath + '/publickey_sign.json', output, dirpath + '/publickey_session_sign');
 } else if (mode == 'roundtrip') {
-    var decrypted = decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_encrypted', null, keyczar.TYPE_RSA_PRIVATE);
+    var decrypted = decrypt(dirpath + '/privatekey.json', dirpath + '/publickey_encrypted', null,
+        keyczar.TYPE_RSA_PRIVATE);
     encrypt(dirpath + '/publickey.json', decrypted, dirpath + '/publickey_reencrypted');
 
-    var decrypted2 = decrypt(dirpath + '/privatekey_encrypted.json', dirpath + '/publickey_encrypted', null, keyczar.TYPE_RSA_PRIVATE, password);
+    var decrypted2 = decrypt(dirpath + '/privatekey_encrypted.json',
+        dirpath + '/publickey_encrypted', null, keyczar.TYPE_RSA_PRIVATE, password);
     if (decrypted2 != decrypted) {
         process.stderr.write('encrypted private key did not work?\n');
         process.exit(1);
@@ -143,11 +151,13 @@ if (mode == 'encrypt') {
     // verify the signature
     verify(dirpath + '/publickey_sign.json', decrypted2, dirpath + '/privatekey_sign');
 
-    decrypted = decrypt(dirpath + '/symmetric.json', dirpath + '/symmetric_encrypted', null, keyczar.TYPE_AES);
+    decrypted = decrypt(
+        dirpath + '/symmetric.json', dirpath + '/symmetric_encrypted', null, keyczar.TYPE_AES);
     encrypt(dirpath + '/symmetric.json', decrypted, dirpath + '/symmetric_reencrypted');
 
     decrypted = decryptSession(dirpath + '/privatekey.json', dirpath + '/publickey_session', null);
-    encryptSession(dirpath + '/publickey.json', decrypted, dirpath + '/publickey_session_reencrypted');
+    encryptSession(dirpath + '/publickey.json', decrypted,
+        dirpath + '/publickey_session_reencrypted');
 
     // sign the session output
     sign(dirpath + '/privatekey_sign.json', decrypted, dirpath + '/publickey_session_sign');

@@ -85,7 +85,8 @@ function testMakeExportRsa() {
     var options = {
         size: 512
     };
-    var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, keyczar.PURPOSE_ENCRYPT_DECRYPT, options);
+    var privateKey = keyczar.create(
+        keyczar.TYPE_RSA_PRIVATE, keyczar.PURPOSE_ENCRYPT_DECRYPT, options);
     assert.equal(keyczar.TYPE_RSA_PRIVATE, privateKey.metadata.type);
     var publicKey = privateKey.exportPublicKey();
     assert.equal(keyczar.TYPE_RSA_PUBLIC, publicKey.metadata.type);
@@ -181,15 +182,15 @@ function testStringEncoding() {
 }
 
 var ENCRYPTED_KEYCZAR = {
-   encrypted: true,
-   name: "Test",
-   purpose: "DECRYPT_AND_ENCRYPT",
-   type: "AES",
-   versions: [ {
-      "exportable": false,
-      "status": "PRIMARY",
-      "versionNumber": 1
-   } ]
+    encrypted: true,
+    name: "Test",
+    purpose: "DECRYPT_AND_ENCRYPT",
+    type: "AES",
+    versions: [{
+        "exportable": false,
+        "status": "PRIMARY",
+        "versionNumber": 1
+    }]
 };
 
 var ENCRYPTED_JSON = {

@@ -38,7 +38,7 @@ function testKeyczarConversion() {
     keyczarSerialized = keyczar_util._rsaPrivateKeyToKeyczarJson(rsa);
     var privateKey = keyczar_util.privateKeyFromKeyczar(keyczarSerialized);
 
-    // Encrypt message with the key 
+    // Encrypt message with the key
     var message = 'hello this is a message';
     var ciphertext = publicKey.encrypt(message);
     var decoded = privateKey.decrypt(ciphertext);
@@ -63,7 +63,7 @@ function testBase64Url() {
     });
 }
 
-var KEYCZAR_AES = '{"aesKeyString":"Fg9MqSniawfwlXb0BwvBfQ","hmacKey":{"hmacKeyString":"2UP8uP9UuHxjHnZyF3GxnJ-BIO0M-_5qYfQy2SvCZ9w","size":256},"mode":"CBC","size":128}';
+var KEYCZAR_AES = '{"aesKeyString":"Fg9MqSniawfwlXb0BwvBfQ","hmacKey": {"hmacKeyString":"2UP8uP9UuHxjHnZyF3GxnJ-BIO0M-_5qYfQy2SvCZ9w","size":256},"mode":"CBC","size":128}';
 function testAesKeyczarConversion() {
     var aes = keyczar_util.aesFromKeyczar(KEYCZAR_AES);
 

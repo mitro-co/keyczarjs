@@ -184,7 +184,8 @@ function _deriveKey(password, salt, iterationCount) {
     if (!(iterationCount > 0)) {
         throw new Error('Invalid iterationCount: ' + iterationCount);
     }
-    return forge.pkcs5.pbkdf2(password, salt, iterationCount, _PBE_AES_KEY_BYTES, forge.md.sha1.create());
+    return forge.pkcs5.pbkdf2(
+        password, salt, iterationCount, _PBE_AES_KEY_BYTES, forge.md.sha1.create());
 }
 
 function _decryptKey(keyString, password) {
@@ -313,7 +314,7 @@ function _makeKeyczar(data, password) {
         if (p == PURPOSE_SIGN_VERIFY) {
             instance.sign = function(message) {
                 message = forge.util.encodeUtf8(message);
-                var signature =  instance.primary.sign(message);
+                var signature = instance.primary.sign(message);
                 return keyczar.keyczar_util.encodeBase64Url(signature);
             };
         }
