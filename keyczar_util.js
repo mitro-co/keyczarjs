@@ -2,6 +2,7 @@
 var forge;
 var keyczar;
 (function() {
+'use strict';
 // define node.js module
 if (typeof module !== 'undefined' && module.exports) {
     keyczar = {
@@ -29,7 +30,7 @@ function _unpackOutput(message) {
         throw new Error('Unsupported version byte: ' + message.charCodeAt(0));
     }
 
-    keyhash = message.substr(1, KEYHASH_LENGTH);
+    var keyhash = message.substr(1, KEYHASH_LENGTH);
     message = message.substr(1 + KEYHASH_LENGTH);
     return {keyhash: keyhash, message: message};
 }
@@ -140,7 +141,7 @@ function _decodeBigEndian(byteString) {
 // Returns an Array of byte strings from an input byte string.
 // Equivalent to org.keyczar.util.Util.lenPrefixUnpack
 function _unpackByteStrings(bytes) {
-    numByteStrings = _decodeBigEndian(bytes);
+    var numByteStrings = _decodeBigEndian(bytes);
     var index = 4;
 
     var output = [];
@@ -266,7 +267,7 @@ function _makeRsaKey(rsaKey) {
     };
 
     key.encrypt = function(plaintext) {
-        ciphertext = keyczar.rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
+        var ciphertext = keyczar.rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
         return _packOutput(key.keyhash, ciphertext);
     };
 

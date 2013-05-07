@@ -9,6 +9,7 @@
 var forge;
 var keyczar;
 (function() {
+'use strict';
 // define node.js module
 if (typeof module !== 'undefined' && module.exports) {
     keyczar = {};
@@ -141,7 +142,7 @@ function xorString(string1, string2) {
     }
 
     var out = '';
-    for (i = 0; i < string1.length; i++) {
+    for (var i = 0; i < string1.length; i++) {
         out += String.fromCharCode(string1.charCodeAt(i) ^ string2.charCodeAt(i));
     }
     return out;
@@ -151,7 +152,7 @@ function rsa_mgf1(seed, maskLength, hash) {
     var t = '';
     var count = Math.ceil(maskLength / hash.digestLength);
     for (var i = 0; i < count; i++) {
-        c = String.fromCharCode((i >> 24) & 0xFF, (i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF);
+        var c = String.fromCharCode((i >> 24) & 0xFF, (i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF);
         hash.start();
         hash.update(seed + c);
         t += hash.digest().getBytes();

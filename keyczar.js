@@ -2,6 +2,7 @@
 var forge;
 var keyczar;
 (function() {
+'use strict';
 // define node.js module
 if (typeof module !== 'undefined' && module.exports) {
     keyczar = {
@@ -204,7 +205,7 @@ function _decryptKey(keyString, password) {
     // decrypt the key with the derived key
     var cipher = forge.aes.startDecrypting(derivedKey, iv, null);
     cipher.update(new forge.util.ByteBuffer(key));
-    success = cipher.finish();
+    var success = cipher.finish();
     if (!success) {
         throw new Error('AES decryption failed');
     }
@@ -221,7 +222,7 @@ function _encryptKey(keyString, password) {
     var iv = forge.random.getBytes(_PBE_AES_KEY_BYTES);
     var cipher = forge.aes.startEncrypting(derivedKey, iv, null);
     cipher.update(new forge.util.ByteBuffer(keyString));
-    success = cipher.finish();
+    var success = cipher.finish();
     if (!success) {
         throw new Error('AES encryption failed');
     }
