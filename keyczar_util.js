@@ -1,21 +1,20 @@
 // Define keyczar_util as a module that can be loaded both by node require and a browser
+var forge;
+var keyczar;
 (function() {
-// define keyczar
-var keyczar = null;
-var forge = null;
-if(typeof(window) !== 'undefined') {
-    keyczar = window.keyczar = window.keyczar || {};
-    keyczar.keyczar_util = {};
-    forge = window.forge;
-}
 // define node.js module
-else if(typeof(module) !== 'undefined' && module.exports) {
+if (typeof module !== 'undefined' && module.exports) {
     keyczar = {
         rsa_oaep: require('./rsa_oaep')
     };
     module.exports = keyczar.keyczar_util = {};
     // forge must be global and loaded before any functions here are called
     forge = require('node-forge');
+} else {
+    if (typeof keyczar === 'undefined') {
+        keyczar = {};
+    }
+    keyczar.keyczar_util = {};
 }
 var keyczar_util = keyczar.keyczar_util;
 
