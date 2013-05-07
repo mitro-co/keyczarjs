@@ -18,15 +18,66 @@
 <script type="text/javascript" src="keyczar_util.js"></script>
 <script type="text/javascript" src="rsa_oaep.js"></script>
 <script type="text/javascript" src="keyczar.js"></script>
+<script type="text/javascript">
+'use strict';
+
+function loaded() {
+  // generate a small key to make this fast
+  var options = {
+      size: 1024
+  };
+  document.getElementById('keysize').textContent = options.size;
+  var start = new Date();
+  var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, null, options);
+  var end = new Date();
+
+  document.getElementById('time').textContent = (end - start).toString();
+  document.getElementById('privatekey').textContent = privateKey.toJson();
+  document.getElementById('publickey').textContent = privateKey.exportPublicKey().toJson();
+
+  var publicKey = keyczar.fromJson(privateKey.exportPublicKey().toJson());
+
+  // Test round tripping using the exported key
+  var message = document.getElementById('input').textContent;
+  var encrypted = publicKey.encrypt(message);
+  document.getElementById('encrypted').textContent = encrypted;
+
+  privateKey = keyczar.fromJson(privateKey.toJson());
+  var decrypted = privateKey.decrypt(encrypted);
+  document.getElementById('decrypted').textContent = decrypted;
+  var success = true;
+  if (decrypted != message) {
+    document.getElementById('error').innerHTML += '<p>Decryption failed?</p>';
+    success = false;
+  }
+
+  // Encrypt the private key
+  var password = 'password';
+  var encryptedKey = privateKey.toJsonEncrypted(password)
+  document.getElementById('encryptedkey').textContent = encryptedKey;
+
+  // Decrypt the key and decrypt the value
+  var decryptedKey = keyczar.fromJson(encryptedKey, password);
+  decrypted = decryptedKey.decrypt(encrypted);
+  if (decrypted != message) {
+    document.getElementById('error').innerHTML += '<p>Decrypted key failed?</p>';
+    success = false;
+  }
+
+  if (success) {
+    document.getElementById('success').textContent = 'SUCCESS!';
+  }
+}
+</script>
 </head>
-<body>
+<body onload="loaded()">
 <span id="success" style="color: green; font-weight: bold;"></span>
 <span id="error" style="color: red; font-weight: bold;"></span>
 
 <!-- <p>Input message: <span id="input">hello world?</span></p> -->
 <p>Input message: <span id="input">Héllo world? 本 Key Emoji: 🔑</span></p>
 
-<p>Key generation time (2048-bit RSA): <span id="time"></span> ms</p>
+<p>Key generation time (<span id="keysize"></span>-bit RSA): <span id="time"></span> ms</p>
 <p>Encrypted: <span id="encrypted"></span></p>
 <p>Decrypted: <span id="decrypted"></span></p>
 
@@ -36,54 +87,5 @@
 
 <hr>
 <p>Encrypted key: <span id="encryptedkey"></span></p>
-
-<script type="text/javascript">
-var outputElement = document.getElementById('output');
-
-// generate a small key to make this fast
-var options = {
-    size: 2048
-};
-var start = new Date();
-var privateKey = keyczar.create(keyczar.TYPE_RSA_PRIVATE, null, options);
-var end = new Date();
-
-document.getElementById('time').textContent = (end - start).toString();
-document.getElementById('privatekey').textContent = privateKey.toJson();
-document.getElementById('publickey').textContent = privateKey.exportPublicKey().toJson();
-
-var publicKey = keyczar.fromJson(privateKey.exportPublicKey().toJson());
-
-// Test round tripping using the exported key
-var message = document.getElementById('input').textContent;
-var encrypted = publicKey.encrypt(message);
-document.getElementById('encrypted').textContent = encrypted;
-
-privateKey = keyczar.fromJson(privateKey.toJson());
-var decrypted = privateKey.decrypt(encrypted);
-document.getElementById('decrypted').textContent = decrypted;
-var success = true;
-if (decrypted != message) {
-  document.getElementById('error').innerHTML += '<p>Decryption failed?</p>';
-  success = false;
-}
-
-// Encrypt the private key
-var password = 'password';
-var encryptedKey = privateKey.toJsonEncrypted(password)
-document.getElementById('encryptedkey').textContent = encryptedKey;
-
-// Decrypt the key and decrypt the value
-var decryptedKey = keyczar.fromJson(encryptedKey, password);
-decrypted = decryptedKey.decrypt(encrypted);
-if (decrypted != message) {
-  document.getElementById('error').innerHTML += '<p>Decrypted key failed?</p>';
-  success = false;
-}
-
-if (success) {
-  document.getElementById('success').textContent = 'SUCCESS!';
-}
-</script>
 </body>
 </html>
