@@ -25,6 +25,12 @@ if (typeof module !== 'undefined' && module.exports) {
 var rsa_oaep = keyczar.rsa_oaep;
 
 // RSAES-OAEP-ENCRYPT message (M), with optional label (L)
+/**
+@param {*} key
+@param {string} message
+@param {string} label
+@param {string} seed
+*/
 function rsa_oaep_encrypt(key, message, label, seed) {
     // hash function hard-coded to SHA-1
     var md = forge.md.sha1.create();

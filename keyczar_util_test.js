@@ -46,8 +46,8 @@ function testKeyczarConversion() {
 }
 
 function testBase64Url() {
-    binary = '\x8co\xbf\xfd';
-    keyczar_out = keyczar_util.encodeBase64Url(binary);
+    var binary = '\x8co\xbf\xfd';
+    var keyczar_out = keyczar_util.encodeBase64Url(binary);
     assert.equal('jG-__Q', keyczar_out);
     keyczar_out = keyczar_util.decodeBase64Url(keyczar_out);
     assert.equal(binary, keyczar_out);

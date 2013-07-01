@@ -59,17 +59,17 @@ function testCorruptDecrypt() {
     // this tests the padding error handling
     encrypted = rsa_oaep.rsa_oaep_encrypt(pubkey, 'datadatadatadata', '', seed);
     for (var bit = 0; bit < encrypted.length * 8; bit++) {
-        var byte = bit / 8;
+        var byteIndex = bit / 8;
         var bitInByte = bit % 8;
 
-        out = encrypted.substring(0, byte);
+        var out = encrypted.substring(0, byteIndex);
         var mask = 0x1 << bitInByte;
-        out += String.fromCharCode(encrypted.charCodeAt(byte) ^ mask);
-        out += encrypted.substring(byte + 1);
+        out += String.fromCharCode(encrypted.charCodeAt(byteIndex) ^ mask);
+        out += encrypted.substring(byteIndex + 1);
 
         try {
-            output = rsa_oaep.rsa_oaep_decrypt(privateKey, out);
-            console.log('Error: expected an exception!', bit, byte, bitInByte, mask);
+            var output = rsa_oaep.rsa_oaep_decrypt(privateKey, out);
+            console.log('Error: expected an exception!', bit, byteIndex, bitInByte, mask);
             console.log(output);
             assert(false);
         } catch (e) {

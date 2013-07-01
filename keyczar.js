@@ -29,6 +29,9 @@ var RSA_DEFAULT_BITS = 4096;
 var AES_DEFAULT_BITS = 128;
 var HMAC_DEFAULT_BITS = 256;
 
+/**
+@param {number=} size key length in bits
+*/
 function _generateAes(size) {
     if (!size) size = AES_DEFAULT_BITS;
 
@@ -240,6 +243,10 @@ function _encryptKey(keyString, password) {
 }
 
 // Returns a Keyczar object from data.
+/**
+@param {*} data Deserialized JSON object containing the key
+@param {string=} password Used to encrypt the key
+*/
 function _makeKeyczar(data, password) {
     var instance = {};
 
@@ -366,6 +373,10 @@ function _makeKeyczar(data, password) {
     return instance;
 }
 
+/**
+@param {*} key key used to encrypt the session key
+@param {string=} sessionMaterial existing session material for decryption
+*/
 function createSessionCrypter(key, sessionMaterial) {
     if (key.metadata.type != TYPE_RSA_PRIVATE && key.metadata.type != TYPE_RSA_PUBLIC) {
         throw new Error('Invalid key type for SessionCrypter: ' + key.metadata.type);

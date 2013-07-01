@@ -30,7 +30,7 @@ function testKeyczarRsa() {
 
     // round trip the message using the public key
     var publickey = readKey('publickey.json');
-    encrypted3 = publickey.encrypt(EXAMPLE_MESSAGE);
+    var encrypted3 = publickey.encrypt(EXAMPLE_MESSAGE);
     // there is a very small probability these will be the same; if the same seed is generated
     assert(encrypted3 != encrypted);
     assert(encrypted3 != encrypted2);
@@ -58,9 +58,9 @@ function testSerializeKeys() {
     var publicKey = privateKey.exportPublicKey();
 
     var json = publicKey.toJson();
-    serializedKey = keyczar.fromJson(json);
-    encrypted = serializedKey.encrypt(EXAMPLE_MESSAGE);
-    var serializedKey = keyczar.fromJson(privateKey.toJson());
+    var serializedKey = keyczar.fromJson(json);
+    var encrypted = serializedKey.encrypt(EXAMPLE_MESSAGE);
+    serializedKey = keyczar.fromJson(privateKey.toJson());
     assert.equal(EXAMPLE_MESSAGE, serializedKey.decrypt(encrypted));
 }
 
