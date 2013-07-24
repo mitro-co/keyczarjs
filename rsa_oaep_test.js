@@ -73,7 +73,8 @@ function testCorruptDecrypt() {
             console.log(output);
             assert(false);
         } catch (e) {
-            if (e.message != 'Decryption error: invalid padding') {
+            if (e.message != 'Decryption error: invalid padding' &&
+                    e.message != 'Encrypted message is invalid.') {
                 throw e;
             }
         }
