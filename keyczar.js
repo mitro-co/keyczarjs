@@ -167,18 +167,27 @@ var _PBE_AES_KEY_BYTES = 16;
 
 // PBKDF2 RFC 2898 recommends at least 8 bytes (64 bits) of salt
 // http://tools.ietf.org/html/rfc2898#section-4
-// but NIST recommends at least 16 bytes (128 bits)
+// but NIST recommends at least 16 bytes (128 bits; see Section 5.1)
 // http://csrc.nist.gov/publications/nistpubs/800-132/nist-sp800-132.pdf
 var _SALT_BYTES = 16;
 
-// NIST suggests count to be 1000 as a minimum, but that seems poor
-// 4 GPUs can do 3M attempts/second with 1000 iterations.
-var MIN_ITERATION_COUNT = 1000;
+// NIST suggests count to be 1000 as a minimum, but that seems poor.
+// 4 GPUs can do 3M attempts/second with 1000 iterations. See:
+// http://blog.agilebits.com/2013/04/16/1password-hashcat-strong-master-passwords/
+// 10000 iterations; 7 mixed case random letters = 9 days to crack
+// 10000 iterations; 9 mixed case random letters = 193 years days to crack
+// C++ Keyczar uses 4096 iterations by default (crypto_factory.cc)
+var MIN_ITERATION_COUNT = 10000;
 
-// C++ Keyczar uses this many iterations by default (crypto_factory.cc)
-var _CPP_ITERATION_COUNT = 4096;
+// We use 50000 iterations by default to increase brute force difficulty
+// 7 mixed case random letters = 41 days to crack
+// 9 mixed case random letters = 867 years to crack
 
-var _DEFAULT_ITERATIONS = 10000;
+// Timings from Chrome 28.0.1500.71 on a 2GHz i7 Mac:
+//   10000 iterations ~= 83 ms/derivation
+//   20000 iterations ~= 167 ms/derivation
+//   50000 iterations ~= 407 ms/derivation
+var _DEFAULT_ITERATIONS = 50000;
 
 function _deriveKey(password, salt, iterationCount) {
     // check ! > 0 so that it fails for undefined
