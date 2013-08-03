@@ -65,6 +65,19 @@ Differences
   Keyczar's directories, just as a JSON object.
 
 
+Password-Protected Keys
+-----------------------
+
+KeyczarJS supports reading and writing keys that are encrypted by a password.
+The format is compatible with the C++ implementation, which is based on
+OpenSSL's password-based encryption.
+
+To make it difficult to accidentally "leak" an unencrypted key, `toJson()`
+does not work for password protected keys. Instead, you should use
+`toJsonEncrypted()`. In rare cases where you must access the serialized key,
+you can use `exportDecryptedJson()`.
+
+
 
 Adding KeyczarJS to your project
 --------------------------------

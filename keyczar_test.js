@@ -221,7 +221,13 @@ function testEncryptedKey() {
     var key2 = keyczar.fromJson(encryptedKey2, 'hellopassword');
     assert(key2.metadata.encrypted);
     assert.equal('hello', key2.decrypt(key.encrypt('hello')));
+    // throws to protect accidental errors
     assert.throws(function() { key2.toJson(); });
+
+    // explicitly exporting the decrypted key works
+    var s = key2.exportDecryptedJson();
+    var key3 = keyczar.fromJson(s);
+    assert.equal('hello', key2.decrypt(key3.encrypt('hello')));
 }
 
 function testSigning() {

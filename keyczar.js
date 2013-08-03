@@ -356,6 +356,25 @@ function _makeKeyczar(data, password) {
         return JSON.stringify(out);
     };
 
+    // Returns the decrypted version of this password-protected key.
+    // WARNING: This is dangerous as it can be used to leak a password-protected key
+    instance.exportDecryptedJson = function() {
+        if (!instance.metadata.encrypted) {
+            throw new Error('Key in not encrypted; use toJson() instead');
+        }
+
+        var unencrypted = _toJsonObject();
+
+        // hack the metadata to mark it as unencrypted
+        var meta = JSON.parse(unencrypted.meta);
+        meta.encrypted = false;
+        console.log(JSON.stringify(meta));
+        unencrypted.meta = JSON.stringify(meta);
+
+        console.log(JSON.stringify(unencrypted));
+        return JSON.stringify(unencrypted);
+    };
+
     instance.toJsonEncrypted = function(password) {
         // TODO: Enforce some sort of minimum length?
         if (password.length === 0) {
