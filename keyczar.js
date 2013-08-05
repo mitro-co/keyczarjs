@@ -360,7 +360,7 @@ function _makeKeyczar(data, password) {
     // WARNING: This is dangerous as it can be used to leak a password-protected key
     instance.exportDecryptedJson = function() {
         if (!instance.metadata.encrypted) {
-            throw new Error('Key in not encrypted; use toJson() instead');
+            throw new Error('Key is not encrypted; use toJson() instead');
         }
 
         var unencrypted = _toJsonObject();
