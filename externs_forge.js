@@ -27,16 +27,20 @@ var console = {
   log: function(output, var_args) {}
 };
 
+var forge = {};
+forge.random.getBytes = function(n) {};
+forge.pki = {};
+forge.pki.rsa = {};
+/**
+@return {{keys: {privateKey}}} RSA key generation state
+*/
+forge.pki.rsa.createKeyPairGenerationState = function(n) {};
+forge.pki.rsa.stepKeyPairGenerationState = function(generator, n) {};
+
+forge.jsbn = {};
 /**
 @constructor
 @param {string} value
 @param {number} base
 */
-function BigInteger(value, base) {}
-
-var forge = {};
-forge.random.getBytes = function(n) {};
-forge.pki = {};
-forge.pki.rsa = {};
-forge.pki.rsa.createKeyPairGenerationState = function(n) {};
-forge.pki.rsa.stepKeyPairGenerationState = function(generator, n) {};
+forge.jsbn.BigInteger = function(value, base) {};
