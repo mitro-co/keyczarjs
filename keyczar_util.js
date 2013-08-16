@@ -216,7 +216,7 @@ function _rsaPublicKeyToKeyczarJson(publicKey) {
 function _bytesToBigInteger(bytes) {
     var buffer = forge.util.createBuffer(bytes);
     var hex = buffer.toHex();
-    return new BigInteger(hex, 16);
+    return new forge.jsbn.BigInteger(hex, 16);
 }
 
 function _base64ToBn(s) {
