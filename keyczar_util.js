@@ -5,9 +5,7 @@ var keyczar;
 'use strict';
 // define node.js module
 if (typeof module !== 'undefined' && module.exports) {
-    keyczar = {
-        rsa_oaep: require('./rsa_oaep')
-    };
+    keyczar = {};
     module.exports = keyczar.keyczar_util = {};
     // forge must be global and loaded before any functions here are called
     forge = require('node-forge');
@@ -267,7 +265,9 @@ function _makeRsaKey(rsaKey) {
     };
 
     key.encrypt = function(plaintext) {
-        var ciphertext = keyczar.rsa_oaep.rsa_oaep_encrypt(rsaKey, plaintext);
+        // needed to make this work with private keys
+        var tempKey = forge.pki.setRsaPublicKey(rsaKey.n, rsaKey.e);
+        var ciphertext = tempKey.encrypt(plaintext, 'RSA-OAEP');
         return _packOutput(key.keyhash, ciphertext);
     };
 
@@ -320,7 +320,7 @@ function privateKeyFromKeyczar(serialized) {
     key.decrypt = function(message) {
         message = _unpackOutput(message);
         _checkKeyHash(key.keyhash, message);
-        return keyczar.rsa_oaep.rsa_oaep_decrypt(rsaKey, message.message);
+        return rsaKey.decrypt(message.message, 'RSA-OAEP');
     };
 
     key.sign = function(message) {
