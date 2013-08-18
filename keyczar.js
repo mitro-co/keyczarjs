@@ -368,10 +368,7 @@ function _makeKeyczar(data, password) {
         // hack the metadata to mark it as unencrypted
         var meta = JSON.parse(unencrypted.meta);
         meta.encrypted = false;
-        console.log(JSON.stringify(meta));
         unencrypted.meta = JSON.stringify(meta);
-
-        console.log(JSON.stringify(unencrypted));
         return JSON.stringify(unencrypted);
     };
 
