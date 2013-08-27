@@ -22,7 +22,6 @@ var keyczar;
 // define node.js module
 if (typeof module !== 'undefined' && module.exports) {
     keyczar = {
-        rsa_oaep: require('./rsa_oaep'),
         keyczar_util: require('./keyczar_util')
     };
     module.exports = keyczar;
