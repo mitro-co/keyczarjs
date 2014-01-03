@@ -235,7 +235,7 @@ function _decryptKey(keyString, password) {
     cipher.update(new forge.util.ByteBuffer(key));
     var success = cipher.finish();
     if (!success) {
-        throw new Error('AES decryption failed');
+        throw new Error('AES decryption failed (password incorrect or data is corrupt?)');
     }
 
     return cipher.output.getBytes();
