@@ -246,6 +246,18 @@ function testEncryptedKey() {
     assert.equal('hello', key2.decrypt(key3.encrypt('hello')));
 }
 
+function testEncryptedKeyBadPassword() {
+    // key "decrypts" (padding checks correctly), but is garbage
+    // previously caused a syntax error
+    var encryptedKey = "{\"1\":\"{\\\"salt\\\":\\\"J-CXelpy0nYAonuBJQ7O-g\\\",\\\"iterationCount\\\":50000,\\\"hmac\\\":\\\"HMAC_SHA1\\\",\\\"cipher\\\":\\\"AES128\\\",\\\"iv\\\":\\\"DeB42VjXh3qXRk-ToO5IMg\\\",\\\"key\\\":\\\"WB4jACveA48SUEq2fRYM6Q40ym5H_jE71bKwqhG9MC6sjWi7ySssPY4BS1ho1pYYv6DB2jFbMozgbdSGdfduHXLb6Xr-27Atq97tKWJ2H5kogU3plQ5QIlsMT85gh3vHiki0EpUzfyZzEN8dAxPqU_-BTYsA32yydf26-9iYBHUBGztk_FWuDof_P-KmsO_D0Xqcu4wKBRQylCaaHQa3ylIzhKkSiG0bSdv_yGdSSp5-VowsqaHdVSEkd5Nn8MrTI0o6UR9Tj5NWwY0876T8q5n7qWg5DJVsNUc6fZEh4Cg6uC_z9LF9im430WR5pa5iFSKizE4QtNStTwhmAV0KDUPBZtjqtTdKdf1h4JWw-VEz-F_9azVDO9Rx8gmRMzU7-ckNR-KyIboA7jp4pUCftbfjtTnM1-gcGMS_I2I9fGU5h58DCUzQpel9i4bxXpvnd7SnwnUov2oL4zguyMkTqZ5wr4ha2XP4PkIRnGoPyxSqenD801utb-dj3cGobF2NU9QuOI680ujAlhj9X677o5sfy6iFdNlSkynNn2Lwfy3imJnF1zozZHknkqFBHur-WsIgWjQh_WzcwG8uOm1mwTY-k9_LgSGa_LM-RGKHN-nbLjGIpCeLFHnww8j6nMI-A-5SYaLIfKMHcv2Y4cKc_cc9DHs9V5eNBo88y7BChB-jHFt5kRYMtHCc47FRDslsO8tZ7JVScoOt_l4hVKUMQe7_rh-no2sr6b7cow8Tsm8s13n0fBGQPPhYknnTtp4ejdwN0ctbDWG1Y-TT5jZGuijWBFm0dyEkmCbX9J0O7PbhOPnsxvA7Eycsz0ScSEiFXBGcPun2RrgAlfbDapkJJRmXT1aLXZNgy5hggGisBx4CTfxsuJhyZTSiB4-bbJj-t_WDRcMKUIrEvoDiV2-h5CI6QJySFjBFsEvHlQw4sNwnIoXGFLZKyQEo6T6A8CBLyZWWHwH-LZlXJXIxYO6wthLRvLU0A8hVRYrKgE_gzPHjqVOFDYbKesNXHZ7QwC2G8-OUFXb_HhKDzeOJLVY_RQZImxB-lRF7jmpui8SarDMa7LlHnciQOdQkSlYN0_RM3b4ebm1KQHcCAK2dgUb7WgidNuH-k0JGeeliupDGyzAKsJTZM4BKmz6E9-Cgq-AYDcF9exd7SvC1T2uOoR4By39YF_ajotV-SU-H-0nqRpxXAn2DPtsEnB_Rj4rBH8shuPtGrjSqP1iDClGIqGZYADIQqqhhu6GRbdzUkekN8DsA2vtGuZrAsp49vRinq7Li3d1OoaJL0KQqNKT2xOvGCZsIIDSROtD4YuDFJA9I4qPTU9zT5x0rYwLWglAplUB48SWmks8qBJ99s2UbT2O8yzr7W9iFDRyuIeBRjR861_44CUFC5_xacy6gvS4DU2PKnraexXtqFAS4qkfDYfnqDEuy2QN8UaIDl3fVce3bH1saHLTIWo6PBuOBz7VIyH9ElAapk2vwg4ui1TSMPOC9yn8uDByPuRXnWymfaS6i5uVeKdWjnPaJiFcKL_cstn-zSPNj04QvNXffDfE0vLZ3ChrSruxbrgIE_2Yid_9K3cP_FcMPw8sKrQfDLMThdG8BwQqiUBiRbh7u-ZQxkdWe98CkTeGZvV9kwnruu0AyVgkbeJOA7jlqh7ACp4wMJ0X5jcdB2gkguWMkjF7z1xWyC4DYz4JC9UEVf-NMa9U2HCPv2YpXdqtueITLLEafAAjjEQTkeAVhddVxnmwn7cvKz4DOQOxDR-SHOd1_2CwTpyvJVopzZnd_7Pm-XrqgV9MMQorkBBIANHGNqZ9vwvubIic4KI280zdI0lzTQStoPny5VD-3JG-9PZa3T6d5kBsaYVgP4GwM__qGi0wnYaoSGdWlFkxugChoxtlFIxgowy6gRxCSbACHAdZdur9Er1cS-GYC1ZL0Mwd3ZFjBb7awESt461X3tEZaC4toHzMFlC9Baw2dvSRJAZRAZSIMDEEHpO0xTc-HvRl-0rb5us0LZsMkY1-X84bhqdgvlqcTlttIL0fZmaFAuU3ltF4kEfRpfeSFKc8a6coTy5v2qEOa9T091ZpIE-KJFr_CHRc-PnpPGmU0lq0fm3mrqWsnLxl6NhkJPmLmcQcNPppFtQAC8Ksal4VVqx6VQudoEtpWkbbSIgJMCrBMS9KbFApptIEID3_MYVkJoxMff-87nMQ9CkwBoCgoDZrxvAgCTEvVrcft6zRdLEwUEeJgBnwJwYZXXjetSmSTja4eto9giHLvEvdk44Ilq4jR9RJYWGZ5ZDkvp0AKgpqj5b_0GGfjUZjK\\\"}\",\"meta\":\"{\\\"name\\\":\\\"\\\",\\\"purpose\\\":\\\"DECRYPT_AND_ENCRYPT\\\",\\\"type\\\":\\\"RSA_PRIV\\\",\\\"encrypted\\\":true,\\\"versions\\\":[{\\\"exportable\\\":false,\\\"status\\\":\\\"PRIMARY\\\",\\\"versionNumber\\\":1}]}\"}";
+    try {
+        keyczar.fromJson(encryptedKey, 'badpass');
+        assert(false, 'expected exception');
+    } catch (e) {
+        assert(e.message.indexOf('password incorrect') != -1);
+    }
+}
+
 function testSigning() {
     // private key can sign and verify
     var key = keyczar.fromJson(readTestData('privatekey_sign.json'));
@@ -282,4 +294,4 @@ function testSigning() {
 
 test_util.runTests([testKeyczarRsa, testEncryptAllBytes, testSerializeKeys, testMaxLengthData,
     testMakeExportRsa, testSymmetric, testRawBinary, testSession, testStringEncoding,
-    testEncryptedKey, testSigning]);
+    testEncryptedKey, testEncryptedKeyBadPassword, testSigning]);

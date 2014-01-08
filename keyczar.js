@@ -214,6 +214,7 @@ function _deriveKey(password, salt, iterationCount) {
         password, salt, iterationCount, _PBE_AES_KEY_BYTES, forge.md.sha1.create());
 }
 
+var PBE_DECRYPT_FAILED_MESSAGE = 'AES decryption failed (password incorrect or data is corrupt?)';
 function _decryptKey(keyString, password) {
     var data = JSON.parse(keyString);
 
@@ -235,10 +236,21 @@ function _decryptKey(keyString, password) {
     cipher.update(new forge.util.ByteBuffer(key));
     var success = cipher.finish();
     if (!success) {
-        throw new Error('AES decryption failed (password incorrect or data is corrupt?)');
+        throw new Error(PBE_DECRYPT_FAILED_MESSAGE);
     }
 
-    return cipher.output.getBytes();
+    var decryptedKeyBytes = cipher.output.getBytes();
+    // unfortunately, this PBE format has no HMAC, so this could be garbage.
+    // However, it is VERY unlikely we'll get garbage that happens to be valid
+    // UTF-8-encoded JSON. This sanity check is very likely to catch errors
+    try {
+        var decryptedKeyString = forge.util.decodeUtf8(decryptedKeyBytes);
+        var decryptedJSON = JSON.parse(decryptedKeyString);
+        return decryptedKeyString;
+    } catch (e) {
+        // almost certainly any error is a password error
+        throw new Error(PBE_DECRYPT_FAILED_MESSAGE);
+    }
 }
 
 function _encryptKey(keyString, password) {
