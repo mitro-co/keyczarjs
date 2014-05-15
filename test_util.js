@@ -14,10 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-module.exports.runTests = function(tests) {
+var test_util = {};
+test_util.runTests = function(tests) {
     for (var i = 0; i < tests.length; i++) {
         tests[i]();
         process.stdout.write('.');
     }
     console.log('success');
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = test_util;
+}

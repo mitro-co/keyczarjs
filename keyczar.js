@@ -15,29 +15,22 @@ limitations under the License.
 */
 
 // Define keyczar as a module that can be loaded both by node require and a browser
-var forge;
-var keyczar;
+/** @suppress {duplicate} */
+var forge = forge || require('node-forge');
+/** @suppress {duplicate} */
+var keyczar_util = keyczar_util || require('./keyczar_util');
+
+var keyczar = {};
 (function() {
 'use strict';
-// define node.js module
-if (typeof module !== 'undefined' && module.exports) {
-    keyczar = {
-        keyczar_util: require('./keyczar_util')
-    };
-    module.exports = keyczar;
-    // forge must be global and loaded before any functions here are called
-    forge = require('node-forge');
-} else if (typeof keyczar === 'undefined') {
-    keyczar = {};
-}
 
-var TYPE_AES = 'AES';
-var TYPE_RSA_PRIVATE = 'RSA_PRIV';
-var TYPE_RSA_PUBLIC = 'RSA_PUB';
-var PURPOSE_DECRYPT_ENCRYPT = 'DECRYPT_AND_ENCRYPT';
-var PURPOSE_ENCRYPT = 'ENCRYPT';
-var PURPOSE_VERIFY = 'VERIFY';
-var PURPOSE_SIGN_VERIFY = 'SIGN_AND_VERIFY';
+keyczar.TYPE_AES = 'AES';
+keyczar.TYPE_RSA_PRIVATE = 'RSA_PRIV';
+keyczar.TYPE_RSA_PUBLIC = 'RSA_PUB';
+keyczar.PURPOSE_DECRYPT_ENCRYPT = 'DECRYPT_AND_ENCRYPT';
+keyczar.PURPOSE_ENCRYPT = 'ENCRYPT';
+keyczar.PURPOSE_VERIFY = 'VERIFY';
+keyczar.PURPOSE_SIGN_VERIFY = 'SIGN_AND_VERIFY';
 var STATUS_PRIMARY = 'PRIMARY';
 
 // Java uses 4096, but C++ and Python use 2048.
@@ -54,15 +47,19 @@ function _generateAes(size) {
     // generate random bytes for both AES and HMAC
     var keyBytes = forge.random.getBytes(size/8);
     var hmacBytes = forge.random.getBytes(HMAC_DEFAULT_BITS/8);
-    return keyczar.keyczar_util._aesFromBytes(keyBytes, hmacBytes);
+    return keyczar_util._aesFromBytes(keyBytes, hmacBytes);
 }
 
-// Returns a new Keyczar key. Note: this is slow for RSA keys.
-// TODO: Support different types. Right now it generates asymmetric RSA keys.
-// TODO: Possibly generate the key in steps to avoid hanging a browser?
-function create(type, purpose, options) {
+/** Returns a new Keyczar key. Note: this is slow for RSA keys.
+TODO: Support different types. Right now it generates asymmetric RSA keys.
+TODO: Possibly generate the key in steps to avoid hanging a browser?
+@param {string} type
+@param {string=} purpose
+@param {Object=} options
+*/
+keyczar.create = function(type, purpose, options) {
     if (!purpose) {
-        purpose = PURPOSE_DECRYPT_ENCRYPT;
+        purpose = keyczar.PURPOSE_DECRYPT_ENCRYPT;
     }
     if (!options) {
         options = {};
@@ -77,20 +74,20 @@ function create(type, purpose, options) {
 
     var keyString = null;
     var size = options.size;
-    if (type == TYPE_RSA_PRIVATE) {
+    if (type == keyczar.TYPE_RSA_PRIVATE) {
         if (!size) size = RSA_DEFAULT_BITS;
 
         var generator = forge.pki.rsa.createKeyPairGenerationState(size);
         // run until done
         forge.pki.rsa.stepKeyPairGenerationState(generator, 0);
-        keyString = keyczar.keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey);
-    } else if (type == TYPE_AES) {
+        keyString = keyczar_util._rsaPrivateKeyToKeyczarJson(generator.keys.privateKey);
+    } else if (type == keyczar.TYPE_AES) {
         keyString = _generateAes(size).toJson();
     } else {
         throw new Error('Unsupported key type: ' + type);
     }
 
-    if (!(purpose == PURPOSE_DECRYPT_ENCRYPT || purpose == PURPOSE_SIGN_VERIFY)) {
+    if (!(purpose == keyczar.PURPOSE_DECRYPT_ENCRYPT || purpose == keyczar.PURPOSE_SIGN_VERIFY)) {
         throw new Error('Unsupported purpose: ' + JSON.stringify(purpose, null, 2));
     }
 
@@ -114,25 +111,25 @@ function create(type, purpose, options) {
     };
 
     return _makeKeyczar(data);
-}
+};
 
 // Return a new keyczar containing the public part of key, which must be an asymmetric key.
 function _exportPublicKey(key) {
     var t = key.metadata.type;
     var p = key.metadata.purpose;
-    if (!(t == TYPE_RSA_PRIVATE && (p == PURPOSE_DECRYPT_ENCRYPT || p == PURPOSE_SIGN_VERIFY))) {
+    if (!(t == keyczar.TYPE_RSA_PRIVATE && (p == keyczar.PURPOSE_DECRYPT_ENCRYPT || p == keyczar.PURPOSE_SIGN_VERIFY))) {
         throw new Error('Unsupported key type/purpose:' + t + '/' + p);
     }
 
-    var publicPurpose = PURPOSE_ENCRYPT;
-    if (p == PURPOSE_SIGN_VERIFY) {
-        publicPurpose = PURPOSE_VERIFY;
+    var publicPurpose = keyczar.PURPOSE_ENCRYPT;
+    if (p == keyczar.PURPOSE_SIGN_VERIFY) {
+        publicPurpose = keyczar.PURPOSE_VERIFY;
     }
 
     var metadata = {
         name: key.metadata.name,
         purpose: publicPurpose,
-        type: TYPE_RSA_PUBLIC,
+        type: keyczar.TYPE_RSA_PUBLIC,
         encrypted: false,
         // TODO: Probably should do a deep copy
         versions: key.metadata.versions
@@ -152,11 +149,14 @@ function _exportPublicKey(key) {
 }
 
 /** Returns the key set contained in the JSON string serialized. If password is provided,
-expects an encrypted key using a key derived from password. */
-function fromJson(serialized, password) {
+expects an encrypted key using a key derived from password.
+@param {string} serialized key set in a JSON string.
+@param {string=} password optional password used to encrypt the key.
+*/
+keyczar.fromJson = function(serialized, password) {
     var data = JSON.parse(serialized);
     return _makeKeyczar(data, password);
-}
+};
 
 // find the primary version; ensure we don't have more than one
 function _getPrimaryVersion(metadata) {
@@ -225,9 +225,9 @@ function _decryptKey(keyString, password) {
     if (data.hmac != _PBE_HMAC) {
         throw new Error('Unsupported key derivation function: ' + data.hmac);
     }
-    var iv = keyczar.keyczar_util.decodeBase64Url(data.iv);
-    var salt = keyczar.keyczar_util.decodeBase64Url(data.salt);
-    var key = keyczar.keyczar_util.decodeBase64Url(data.key);
+    var iv = keyczar_util.decodeBase64Url(data.iv);
+    var salt = keyczar_util.decodeBase64Url(data.salt);
+    var key = keyczar_util.decodeBase64Url(data.key);
 
     var derivedKey = _deriveKey(password, salt, data.iterationCount);
 
@@ -268,13 +268,13 @@ function _encryptKey(keyString, password) {
     }
 
     var output = {
-        salt: keyczar.keyczar_util.encodeBase64Url(salt),
+        salt: keyczar_util.encodeBase64Url(salt),
         iterationCount: iterationCount,
         hmac: _PBE_HMAC,
 
         cipher: _PBE_CIPHER,
-        iv: keyczar.keyczar_util.encodeBase64Url(iv),
-        key: keyczar.keyczar_util.encodeBase64Url(cipher.output.getBytes())
+        iv: keyczar_util.encodeBase64Url(iv),
+        key: keyczar_util.encodeBase64Url(cipher.output.getBytes())
     };
     return JSON.stringify(output);
 }
@@ -307,18 +307,18 @@ function _makeKeyczar(data, password) {
 
     var t = instance.metadata.type;
     var p = instance.metadata.purpose;
-    if (t == TYPE_RSA_PRIVATE) {
-        instance.primary = keyczar.keyczar_util.privateKeyFromKeyczar(primaryKeyString);
+    if (t == keyczar.TYPE_RSA_PRIVATE) {
+        instance.primary = keyczar_util.privateKeyFromKeyczar(primaryKeyString);
         instance.exportPublicKey = function() { return _exportPublicKey(instance); };
-    } else if (t == TYPE_RSA_PUBLIC) {
-        instance.primary = keyczar.keyczar_util.publicKeyFromKeyczar(primaryKeyString);
-    } else if (t == TYPE_AES && p == PURPOSE_DECRYPT_ENCRYPT) {
-        instance.primary = keyczar.keyczar_util.aesFromKeyczar(primaryKeyString);
+    } else if (t == keyczar.TYPE_RSA_PUBLIC) {
+        instance.primary = keyczar_util.publicKeyFromKeyczar(primaryKeyString);
+    } else if (t == keyczar.TYPE_AES && p == keyczar.PURPOSE_DECRYPT_ENCRYPT) {
+        instance.primary = keyczar_util.aesFromKeyczar(primaryKeyString);
     } else {
         throw new Error('Unsupported key type: ' + t);
     }
 
-    if (p == PURPOSE_ENCRYPT || p == PURPOSE_DECRYPT_ENCRYPT) {
+    if (p == keyczar.PURPOSE_ENCRYPT || p == keyczar.PURPOSE_DECRYPT_ENCRYPT) {
         // Takes a raw byte string, returns a raw byte string
         instance.encryptBinary = function(plaintext) {
             // TODO: assert that plaintext does not contain special characters
@@ -329,35 +329,35 @@ function _makeKeyczar(data, password) {
             // encode as UTF-8 in case plaintext contains non-ASCII characters
             plaintext = forge.util.encodeUtf8(plaintext);
             var message = instance.encryptBinary(plaintext);
-            message = keyczar.keyczar_util.encodeBase64Url(message);
+            message = keyczar_util.encodeBase64Url(message);
             return message;
         };
 
         // only include decryption if supported by this key type
-        if (p == PURPOSE_DECRYPT_ENCRYPT) {
+        if (p == keyczar.PURPOSE_DECRYPT_ENCRYPT) {
             instance.decryptBinary = function(message) {
                 return instance.primary.decrypt(message);
             };
 
             instance.decrypt = function(message) {
-                message = keyczar.keyczar_util.decodeBase64Url(message);
+                message = keyczar_util.decodeBase64Url(message);
                 var plaintext = instance.primary.decrypt(message);
                 plaintext = forge.util.decodeUtf8(plaintext);
                 return plaintext;
             };
         }
-    } else if (p == PURPOSE_VERIFY || p == PURPOSE_SIGN_VERIFY) {
+    } else if (p == keyczar.PURPOSE_VERIFY || p == keyczar.PURPOSE_SIGN_VERIFY) {
         instance.verify = function(message, signature) {
             message = forge.util.encodeUtf8(message);
-            signature = keyczar.keyczar_util.decodeBase64Url(signature);
+            signature = keyczar_util.decodeBase64Url(signature);
             return instance.primary.verify(message, signature);
         };
 
-        if (p == PURPOSE_SIGN_VERIFY) {
+        if (p == keyczar.PURPOSE_SIGN_VERIFY) {
             instance.sign = function(message) {
                 message = forge.util.encodeUtf8(message);
                 var signature = instance.primary.sign(message);
-                return keyczar.keyczar_util.encodeBase64Url(signature);
+                return keyczar_util.encodeBase64Url(signature);
             };
         }
     }
@@ -430,8 +430,8 @@ function _makeKeyczar(data, password) {
 @param {*} key key used to encrypt the session key
 @param {string=} sessionMaterial existing session material for decryption
 */
-function createSessionCrypter(key, sessionMaterial) {
-    if (key.metadata.type != TYPE_RSA_PRIVATE && key.metadata.type != TYPE_RSA_PUBLIC) {
+keyczar.createSessionCrypter = function(key, sessionMaterial) {
+    if (key.metadata.type != keyczar.TYPE_RSA_PRIVATE && key.metadata.type != keyczar.TYPE_RSA_PUBLIC) {
         throw new Error('Invalid key type for SessionCrypter: ' + key.metadata.type);
     }
 
@@ -439,15 +439,15 @@ function createSessionCrypter(key, sessionMaterial) {
     var rawSessionMaterial = null;
     if (sessionMaterial) {
         // decrypt session key: not base64 encoded if leading byte is VERSION_BYTE
-        if (sessionMaterial.charAt(0) == keyczar.keyczar_util.VERSION_BYTE) {
+        if (sessionMaterial.charAt(0) == keyczar_util.VERSION_BYTE) {
             rawSessionMaterial = sessionMaterial;
         } else {
-            rawSessionMaterial = keyczar.keyczar_util.decodeBase64Url(sessionMaterial);
+            rawSessionMaterial = keyczar_util.decodeBase64Url(sessionMaterial);
         }
         var decrypted = key.decryptBinary(rawSessionMaterial);
-        var keyBytes = keyczar.keyczar_util._unpackByteStrings(decrypted);
+        var keyBytes = keyczar_util._unpackByteStrings(decrypted);
 
-        sessionKey = keyczar.keyczar_util._aesFromBytes(keyBytes[0], keyBytes[1]);
+        sessionKey = keyczar_util._aesFromBytes(keyBytes[0], keyBytes[1]);
     } else {
         // generate the session key
         sessionKey = _generateAes();
@@ -459,7 +459,7 @@ function createSessionCrypter(key, sessionMaterial) {
 
     var crypter = {
         rawSessionMaterial: rawSessionMaterial,
-        sessionMaterial: keyczar.keyczar_util.encodeBase64Url(rawSessionMaterial)
+        sessionMaterial: keyczar_util.encodeBase64Url(rawSessionMaterial)
     };
 
     crypter.encryptBinary = function(plaintext) {
@@ -473,36 +473,27 @@ function createSessionCrypter(key, sessionMaterial) {
 
     sessionKey.sessionMaterial = sessionMaterial;
     return crypter;
-}
+};
 
 // Returns a byte string containing (session material, session encryption).
 // Convenience wrapper around a SessionCrypter.
-function encryptWithSession(key, message) {
-    var crypter = createSessionCrypter(key);
+keyczar.encryptWithSession = function(key, message) {
+    var crypter = keyczar.createSessionCrypter(key);
     message = forge.util.encodeUtf8(message);
     var rawEncrypted = crypter.encryptBinary(message);
-    var packed = keyczar.keyczar_util._packByteStrings([crypter.rawSessionMaterial, rawEncrypted]);
-    return keyczar.keyczar_util.encodeBase64Url(packed);
-}
+    var packed = keyczar_util._packByteStrings([crypter.rawSessionMaterial, rawEncrypted]);
+    return keyczar_util.encodeBase64Url(packed);
+};
 
-function decryptWithSession(key, message) {
-    message = keyczar.keyczar_util.decodeBase64Url(message);
-    var unpacked = keyczar.keyczar_util._unpackByteStrings(message);
-    var crypter = createSessionCrypter(key, unpacked[0]);
+keyczar.decryptWithSession = function(key, message) {
+    message = keyczar_util.decodeBase64Url(message);
+    var unpacked = keyczar_util._unpackByteStrings(message);
+    var crypter = keyczar.createSessionCrypter(key, unpacked[0]);
     var plaintext = crypter.decryptBinary(unpacked[1]);
     return forge.util.decodeUtf8(plaintext);
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = keyczar;
 }
-
-keyczar.TYPE_RSA_PRIVATE = TYPE_RSA_PRIVATE;
-keyczar.TYPE_RSA_PUBLIC = TYPE_RSA_PUBLIC;
-keyczar.TYPE_AES = TYPE_AES;
-keyczar.PURPOSE_DECRYPT_ENCRYPT = PURPOSE_DECRYPT_ENCRYPT;
-keyczar.PURPOSE_SIGN_VERIFY = PURPOSE_SIGN_VERIFY;
-keyczar.create = create;
-keyczar.fromJson = fromJson;
-keyczar.createSessionCrypter = createSessionCrypter;
-keyczar.encryptWithSession = encryptWithSession;
-keyczar.decryptWithSession = decryptWithSession;
-
-// end module
 })();

@@ -14,6 +14,7 @@ Quick Start
 1. Run `npm install` in the `keyczarjs` directory to download Forge using NPM.
 2. Run `./runtests.sh` to run all the unit tests.
 3. Open `browser_test.html` for an example of Keyczar JS in a web browser.
+4. (OPTIONAL): Run `make` to run the Closure compiler to type check all JavaScript (you will probably need to editg the Makefile to provide the location of the Closure Compiler .jar file)
 
 
 Example use (NodeJS)

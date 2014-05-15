@@ -14,10 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/** @suppress {duplicate} */
 var assert = require('assert');
+/** @suppress {duplicate} */
 var forge = require('node-forge');
 
+/** @suppress {duplicate} */
 var keyczar_util = require('./keyczar_util');
+/** @suppress {duplicate} */
 var test_util = require('./test_util');
 
 var pubkeyPem = '-----BEGIN PUBLIC KEY-----\n' +
@@ -50,7 +54,7 @@ function testKeyczarConversion() {
     var publicKey = keyczar_util.publicKeyFromKeyczar(keyczarSerialized);
 
     // load the known private key; format it as a keyczar key
-    var rsa = forge.pki.privateKeyFromPem(privateKeyPem);
+    rsa = forge.pki.privateKeyFromPem(privateKeyPem);
     keyczarSerialized = keyczar_util._rsaPrivateKeyToKeyczarJson(rsa);
     var privateKey = keyczar_util.privateKeyFromKeyczar(keyczarSerialized);
 

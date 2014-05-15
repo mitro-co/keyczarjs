@@ -14,11 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/** @suppress{duplicate} */
 var assert = require('assert');
+/** @suppress{duplicate} */
 var fs = require('fs');
 
+/** @suppress{duplicate} */
 var keyczar = require('./keyczar');
+/** @suppress{duplicate} */
 var keyczar_util = require('./keyczar_util');
+/** @suppress{duplicate} */
 var test_util = require('./test_util');
 
 function readTestData(name) {
@@ -102,7 +107,7 @@ function testMakeExportRsa() {
         size: 512
     };
     var privateKey = keyczar.create(
-        keyczar.TYPE_RSA_PRIVATE, keyczar.PURPOSE_ENCRYPT_DECRYPT, options);
+        keyczar.TYPE_RSA_PRIVATE, keyczar.PURPOSE_DECRYPT_ENCRYPT, options);
     assert.equal(keyczar.TYPE_RSA_PRIVATE, privateKey.metadata.type);
     var publicKey = privateKey.exportPublicKey();
     assert.equal(keyczar.TYPE_RSA_PUBLIC, publicKey.metadata.type);

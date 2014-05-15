@@ -16,8 +16,9 @@ limitations under the License.
 
 // Program to re-encrypt data written from Java to verify that round-tripping works.
 
+/** @suppress{duplicate} */
 var fs = require('fs');
-
+/** @suppress{duplicate} */
 var keyczar = require('./keyczar');
 
 function readFile(path) {
@@ -34,6 +35,13 @@ function encrypt(keyPath, message, outputPath) {
     writeFile(outputPath, encrypted);
 }
 
+/**
+@param {string} keyPath
+@param {string} encryptedPath
+@param {?string} expectedMessage
+@param {string} expectedType
+@param {string=} keyPassword
+*/
 function decrypt(keyPath, encryptedPath, expectedMessage, expectedType, keyPassword) {
     var key = keyczar.fromJson(readFile(keyPath), keyPassword);
     if (key.metadata.type != expectedType) {
