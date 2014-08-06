@@ -25,6 +25,5 @@
     "git://github.com/digitalbazaar/forge.git"],
     "node-forge": "0.3.0"
   },
-  "private": true,
   "license": "BSD"
 }
