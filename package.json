@@ -19,10 +19,6 @@
     "pki"
   ],
   "dependencies" : {
-    "//": ["Pinned version to avoid breaking us when something changes",
-    "we have twice had something break, so this way we control it.",
-    "To test with the latest development version, use this:",
-    "git://github.com/digitalbazaar/forge.git"],
     "node-forge": "0.3.0"
   },
   "license": "BSD"
